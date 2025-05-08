@@ -1,9 +1,9 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Clock } from 'lucide-react-native';
-import { Maintenance } from '@/types/maintenance';
+import { MaintenanceRecord } from '@/hooks/useMaintenance';
 
 interface MaintenanceItemProps {
-  item: Maintenance;
+  item: MaintenanceRecord;
   onPress: () => void;
 }
 
@@ -25,15 +25,15 @@ export function MaintenanceItem({ item, onPress }: MaintenanceItemProps) {
       </View>
       <View style={styles.content}>
         <Text style={styles.title}>{item.title}</Text>
-        <Text style={styles.equipment}>{item.equipmentName}</Text>
+        <Text style={styles.description}>{item.description}</Text>
         <View style={styles.footer}>
           <Text style={styles.cost}>${item.cost.toLocaleString()}</Text>
           <Text style={styles.date}>
             {item.status === 'completed' 
-              ? `Completed on ${item.completedDate}` 
+              ? `Completed on ${new Date(item.completed_date!).toLocaleDateString()}` 
               : item.status === 'overdue' 
-                ? `Overdue: ${item.dueDate}` 
-                : `Due: ${item.dueDate}`}
+                ? `Overdue: ${new Date(item.due_date).toLocaleDateString()}` 
+                : `Due: ${new Date(item.due_date).toLocaleDateString()}`}
           </Text>
         </View>
       </View>
@@ -68,7 +68,7 @@ const styles = StyleSheet.create({
     color: '#334155',
     marginBottom: 4,
   },
-  equipment: {
+  description: {
     fontSize: 14,
     fontFamily: 'Inter-Regular',
     color: '#64748B',

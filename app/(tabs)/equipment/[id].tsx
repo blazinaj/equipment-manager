@@ -1,26 +1,22 @@
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Platform, TextInput, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Calendar, DollarSign, PenTool as Tool, Truck, FileText, Plus, X, Gauge, PenLine } from 'lucide-react-native';
+import { ArrowLeft, Calendar, DollarSign, PenTool as Tool, Truck, FileText, Plus, X, Gauge, PenLine, Trash2 } from 'lucide-react-native';
 import { useState } from 'react';
 import { MaintenanceItem } from '@/components/MaintenanceItem';
 import { CostItem } from '@/components/CostItem';
-import { equipmentData } from '@/data/equipmentData';
-import { maintenanceData } from '@/data/maintenanceData';
-import { costData } from '@/data/costData';
-import { upgradeData } from '@/data/upgradeData';
 import { UpgradeCard } from '@/components/UpgradeCard';
+import { useEquipment } from '@/hooks/useEquipment';
 
 export default function EquipmentDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
+  const { equipment, loading, error: equipmentError, deleteEquipment } = useEquipment();
   
-  const equipment = equipmentData.find(item => item.id === id);
-  const maintenanceHistory = maintenanceData.filter(item => item.equipmentId === id);
-  const costHistory = costData.filter(item => item.equipmentId === id);
-  const upgrades = upgradeData.filter(item => item.equipmentId === id);
-
+  const currentEquipment = equipment.find(item => item.id === id);
+  
   const [isMaintenanceModalVisible, setMaintenanceModalVisible] = useState(false);
+  const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
@@ -29,6 +25,7 @@ export default function EquipmentDetailsScreen() {
   const [serviceProvider, setServiceProvider] = useState('');
   const [notes, setNotes] = useState('');
   const [error, setError] = useState<string | null>(null);
+  const [deleting, setDeleting] = useState(false);
 
   const handleAddMaintenance = () => {
     if (!title.trim()) {
@@ -51,6 +48,19 @@ export default function EquipmentDetailsScreen() {
     resetForm();
   };
 
+  const handleDelete = async () => {
+    try {
+      setDeleting(true);
+      await deleteEquipment(id as string);
+      router.replace('/(tabs)');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to delete equipment');
+    } finally {
+      setDeleting(false);
+      setDeleteModalVisible(false);
+    }
+  };
+
   const resetForm = () => {
     setTitle('');
     setDescription('');
@@ -62,10 +72,20 @@ export default function EquipmentDetailsScreen() {
     setError(null);
   };
 
-  if (!equipment) {
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading equipment details...</Text>
+      </View>
+    );
+  }
+
+  if (equipmentError || !currentEquipment) {
     return (
       <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>Equipment not found</Text>
+        <Text style={styles.errorText}>
+          {equipmentError || 'Equipment not found'}
+        </Text>
         <TouchableOpacity
           style={styles.errorButton}
           onPress={() => router.back()}
@@ -82,7 +102,7 @@ export default function EquipmentDetailsScreen() {
       
       <View style={styles.header}>
         <Image
-          source={{ uri: equipment.image }}
+          source={{ uri: currentEquipment.image_url || 'https://images.pexels.com/photos/2533092/pexels-photo-2533092.jpeg?auto=compress&cs=tinysrgb&w=800' }}
           style={styles.coverImage}
           resizeMode="cover"
         />
@@ -95,34 +115,42 @@ export default function EquipmentDetailsScreen() {
         </TouchableOpacity>
         <TouchableOpacity 
           style={styles.editButton}
-          onPress={() => router.push(`/equipment/edit/${equipment.id}`)}
+          onPress={() => router.push(`/equipment/edit/${currentEquipment.id}`)}
         >
           <PenLine size={24} color="#FFFFFF" />
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={styles.deleteButton}
+          onPress={() => setDeleteModalVisible(true)}
+        >
+          <Trash2 size={24} color="#FFFFFF" />
         </TouchableOpacity>
       </View>
       
       <ScrollView style={styles.content}>
         <View style={styles.titleSection}>
-          <Text style={styles.title}>{equipment.name}</Text>
+          <Text style={styles.title}>{currentEquipment.name}</Text>
           <View style={[styles.statusBadge, 
-            equipment.status === 'Good' 
+            currentEquipment.status === 'Good' 
               ? styles.statusGood 
-              : equipment.status === 'Fair' 
+              : currentEquipment.status === 'Fair' 
                 ? styles.statusFair 
                 : styles.statusPoor
           ]}>
-            <Text style={styles.statusText}>{equipment.status}</Text>
+            <Text style={styles.statusText}>{currentEquipment.status}</Text>
           </View>
         </View>
         
-        <Text style={styles.subtitle}>{equipment.type} • {equipment.year}</Text>
+        <Text style={styles.subtitle}>{currentEquipment.type} • {currentEquipment.year}</Text>
         
         <View style={styles.statsContainer}>
           <View style={styles.statItem}>
             <Calendar size={20} color="#64748B" />
             <View style={styles.statContent}>
               <Text style={styles.statLabel}>Purchase Date</Text>
-              <Text style={styles.statValue}>{equipment.purchaseDate}</Text>
+              <Text style={styles.statValue}>
+                {new Date(currentEquipment.purchase_date).toLocaleDateString()}
+              </Text>
             </View>
           </View>
           
@@ -130,148 +158,91 @@ export default function EquipmentDetailsScreen() {
             <DollarSign size={20} color="#64748B" />
             <View style={styles.statContent}>
               <Text style={styles.statLabel}>Purchase Price</Text>
-              <Text style={styles.statValue}>${equipment.purchasePrice.toLocaleString()}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.statItem}>
-            <Tool size={20} color="#64748B" />
-            <View style={styles.statContent}>
-              <Text style={styles.statLabel}>Maintenance Records</Text>
-              <Text style={styles.statValue}>{equipment.maintenanceCount}</Text>
-            </View>
-          </View>
-          
-          <View style={styles.statItem}>
-            <DollarSign size={20} color="#64748B" />
-            <View style={styles.statContent}>
-              <Text style={styles.statLabel}>Total Cost</Text>
-              <Text style={styles.statValue}>${equipment.totalCost.toLocaleString()}</Text>
+              <Text style={styles.statValue}>
+                ${currentEquipment.purchase_price.toLocaleString()}
+              </Text>
             </View>
           </View>
         </View>
         
-        {equipment.vinNumber && (
+        {(currentEquipment.vin_number || currentEquipment.license_plate) && (
           <View style={styles.infoSection}>
             <View style={styles.infoHeader}>
               <Truck size={20} color="#64748B" />
               <Text style={styles.infoTitle}>Vehicle Information</Text>
             </View>
             <View style={styles.infoContent}>
-              <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>VIN Number</Text>
-                <Text style={styles.infoValue}>{equipment.vinNumber}</Text>
-              </View>
-              {equipment.licensePlate && (
+              {currentEquipment.vin_number && (
+                <View style={styles.infoRow}>
+                  <Text style={styles.infoLabel}>VIN Number</Text>
+                  <Text style={styles.infoValue}>{currentEquipment.vin_number}</Text>
+                </View>
+              )}
+              {currentEquipment.license_plate && (
                 <View style={styles.infoRow}>
                   <Text style={styles.infoLabel}>License Plate</Text>
-                  <Text style={styles.infoValue}>{equipment.licensePlate}</Text>
+                  <Text style={styles.infoValue}>{currentEquipment.license_plate}</Text>
                 </View>
               )}
             </View>
           </View>
         )}
         
-        {equipment.notes && (
+        {currentEquipment.notes && (
           <View style={styles.infoSection}>
             <View style={styles.infoHeader}>
               <FileText size={20} color="#64748B" />
               <Text style={styles.infoTitle}>Notes</Text>
             </View>
-            <Text style={styles.notes}>{equipment.notes}</Text>
+            <Text style={styles.notes}>{currentEquipment.notes}</Text>
           </View>
         )}
 
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upgrades & Modifications</Text>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => router.push(`/equipment/${id}/upgrades/add`)}
-            >
-              <Plus size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-          
-          {upgrades.map((upgrade) => (
-            <UpgradeCard
-              key={upgrade.id}
-              upgrade={upgrade}
-              onPress={() => router.push(`/equipment/${id}/upgrades/${upgrade.id}`)}
-            />
-          ))}
-          
-          {upgrades.length === 0 && (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateText}>
-                No upgrades or modifications added yet
-              </Text>
-              <TouchableOpacity 
-                style={styles.emptyStateButton}
-                onPress={() => router.push(`/equipment/${id}/upgrades/add`)}
-              >
-                <Text style={styles.emptyStateButtonText}>Add First Upgrade</Text>
-              </TouchableOpacity>
-            </View>
-          )}
-        </View>
-        
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Maintenance</Text>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => setMaintenanceModalVisible(true)}
-            >
-              <Plus size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-          {maintenanceHistory.slice(0, 3).map((item) => (
-            <MaintenanceItem 
-              key={item.id}
-              item={item}
-              onPress={() => router.push(`/maintenance/${item.id}`)}
-            />
-          ))}
-          {maintenanceHistory.length > 3 && (
-            <TouchableOpacity 
-              style={styles.viewAllButton}
-              onPress={() => router.push('/maintenance')}
-            >
-              <Text style={styles.viewAllText}>View All Maintenance Records</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        
-        <View style={styles.section}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Expenses</Text>
-            <TouchableOpacity 
-              style={styles.addButton}
-              onPress={() => router.push('/costs/add')}
-            >
-              <Plus size={20} color="#FFFFFF" />
-            </TouchableOpacity>
-          </View>
-          {costHistory.slice(0, 3).map((item) => (
-            <CostItem 
-              key={item.id}
-              item={item}
-              onPress={() => router.push(`/costs/${item.id}`)}
-            />
-          ))}
-          {costHistory.length > 3 && (
-            <TouchableOpacity 
-              style={styles.viewAllButton}
-              onPress={() => router.push('/costs')}
-            >
-              <Text style={styles.viewAllText}>View All Expenses</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-        
         <View style={styles.emptySpace} />
       </ScrollView>
+
+      <Modal
+        visible={isDeleteModalVisible}
+        animationType="fade"
+        transparent={true}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.deleteModalContent}>
+            <View style={styles.deleteModalHeader}>
+              <Trash2 size={24} color="#EF4444" />
+              <Text style={styles.deleteModalTitle}>Delete Equipment</Text>
+            </View>
+
+            <Text style={styles.deleteModalText}>
+              Are you sure you want to delete "{currentEquipment.name}"? This action cannot be undone.
+            </Text>
+
+            <Text style={styles.deleteModalWarning}>
+              All associated maintenance records, costs, and upgrades will also be deleted.
+            </Text>
+
+            <View style={styles.deleteModalActions}>
+              <TouchableOpacity 
+                style={styles.cancelDeleteButton}
+                onPress={() => setDeleteModalVisible(false)}
+                disabled={deleting}
+              >
+                <Text style={styles.cancelDeleteButtonText}>Cancel</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity 
+                style={[styles.confirmDeleteButton, deleting && styles.confirmDeleteButtonDisabled]}
+                onPress={handleDelete}
+                disabled={deleting}
+              >
+                <Text style={styles.confirmDeleteButtonText}>
+                  {deleting ? 'Deleting...' : 'Delete'}
+                </Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
 
       <Modal
         visible={isMaintenanceModalVisible}
@@ -422,6 +393,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#F8FAFC',
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
+  },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
@@ -478,6 +460,17 @@ const styles = StyleSheet.create({
     height: 40,
     borderRadius: 20,
     backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  deleteButton: {
+    position: 'absolute',
+    top: Platform.OS === 'ios' ? 60 : 40,
+    right: 64,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(239, 68, 68, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
@@ -602,43 +595,73 @@ const styles = StyleSheet.create({
     color: '#334155',
     lineHeight: 20,
   },
-  section: {
-    marginBottom: 24,
-  },
-  sectionHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    marginBottom: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#334155',
-  },
-  addButton: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
-    backgroundColor: '#334155',
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
     justifyContent: 'center',
     alignItems: 'center',
   },
-  viewAllButton: {
-    marginHorizontal: 16,
-    paddingVertical: 12,
+  deleteModalContent: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 16,
+    padding: 24,
+    width: '90%',
+    maxWidth: 400,
+  },
+  deleteModalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  deleteModalTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#EF4444',
+    marginLeft: 12,
+  },
+  deleteModalText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#334155',
+    marginBottom: 16,
+    lineHeight: 24,
+  },
+  deleteModalWarning: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#EF4444',
+    marginBottom: 24,
+  },
+  deleteModalActions: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  cancelDeleteButton: {
+    flex: 1,
     backgroundColor: '#F1F5F9',
+    paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
   },
-  viewAllText: {
-    fontSize: 14,
+  cancelDeleteButtonText: {
+    fontSize: 16,
     fontFamily: 'Inter-Medium',
     color: '#334155',
   },
-  emptySpace: {
-    height: 40,
+  confirmDeleteButton: {
+    flex: 1,
+    backgroundColor: '#EF4444',
+    paddingVertical: 12,
+    borderRadius: 8,
+    alignItems: 'center',
+  },
+  confirmDeleteButtonDisabled: {
+    opacity: 0.7,
+  },
+  confirmDeleteButtonText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#FFFFFF',
   },
   modalContainer: {
     flex: 1,
@@ -755,26 +778,7 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
   },
-  emptyState: {
-    padding: 24,
-    alignItems: 'center',
-  },
-  emptyStateText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#64748B',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  emptyStateButton: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  emptyStateButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#334155',
+  emptySpace: {
+    height: 40,
   },
 });

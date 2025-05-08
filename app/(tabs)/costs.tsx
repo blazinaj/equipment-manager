@@ -4,18 +4,19 @@ import { Plus, ArrowDown, ChartPie as PieChart, ChartBar as BarChart4 } from 'lu
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { CostItem } from '@/components/CostItem';
-import { costData } from '@/data/costData';
+import { useCosts } from '@/hooks/useCosts';
 
 export default function CostsScreen() {
   const router = useRouter();
+  const { costs, loading, error } = useCosts();
   const [periodFilter, setPeriodFilter] = useState('monthly');
   
   // Calculate totals
-  const totalCosts = costData.reduce((sum, item) => sum + item.amount, 0);
-  const maintenanceCosts = costData.filter(item => item.category === 'maintenance').reduce((sum, item) => sum + item.amount, 0);
-  const repairCosts = costData.filter(item => item.category === 'repair').reduce((sum, item) => sum + item.amount, 0);
-  const upgradeCosts = costData.filter(item => item.category === 'upgrade').reduce((sum, item) => sum + item.amount, 0);
-  const fuelCosts = costData.filter(item => item.category === 'fuel').reduce((sum, item) => sum + item.amount, 0);
+  const totalCosts = costs.reduce((sum, item) => sum + item.amount, 0);
+  const maintenanceCosts = costs.filter(item => item.category === 'maintenance').reduce((sum, item) => sum + item.amount, 0);
+  const repairCosts = costs.filter(item => item.category === 'repair').reduce((sum, item) => sum + item.amount, 0);
+  const upgradeCosts = costs.filter(item => item.category === 'upgrade').reduce((sum, item) => sum + item.amount, 0);
+  const fuelCosts = costs.filter(item => item.category === 'fuel').reduce((sum, item) => sum + item.amount, 0);
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -30,89 +31,115 @@ export default function CostsScreen() {
             <Plus size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
+
+        {error && (
+          <View style={styles.errorMessage}>
+            <Text style={styles.errorText}>{error}</Text>
+          </View>
+        )}
         
-        <View style={styles.summaryCard}>
-          <View style={styles.summaryHeader}>
-            <Text style={styles.summaryTitle}>Total Expenses</Text>
-            <View style={styles.periodSelector}>
-              <TouchableOpacity 
-                style={[styles.periodButton, periodFilter === 'monthly' && styles.periodButtonActive]}
-                onPress={() => setPeriodFilter('monthly')}
-              >
-                <Text style={[styles.periodText, periodFilter === 'monthly' && styles.periodTextActive]}>Monthly</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.periodButton, periodFilter === 'yearly' && styles.periodButtonActive]}
-                onPress={() => setPeriodFilter('yearly')}
-              >
-                <Text style={[styles.periodText, periodFilter === 'yearly' && styles.periodTextActive]}>Yearly</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.periodButton, periodFilter === 'all' && styles.periodButtonActive]}
-                onPress={() => setPeriodFilter('all')}
-              >
-                <Text style={[styles.periodText, periodFilter === 'all' && styles.periodTextActive]}>All</Text>
-              </TouchableOpacity>
-            </View>
+        {loading ? (
+          <View style={styles.loadingState}>
+            <Text style={styles.loadingText}>Loading costs...</Text>
           </View>
-          
-          <Text style={styles.totalAmount}>${totalCosts.toLocaleString()}</Text>
-          
-          <View style={styles.chartControls}>
-            <TouchableOpacity style={styles.chartButton}>
-              <PieChart size={18} color="#334155" />
-              <Text style={styles.chartButtonText}>Categories</Text>
-            </TouchableOpacity>
-            <TouchableOpacity style={styles.chartButton}>
-              <BarChart4 size={18} color="#334155" />
-              <Text style={styles.chartButtonText}>Timeline</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <View style={styles.categorySummary}>
-            <View style={styles.categoryItem}>
-              <View style={[styles.categoryDot, { backgroundColor: '#0D9488' }]} />
-              <Text style={styles.categoryName}>Maintenance</Text>
-              <Text style={styles.categoryAmount}>${maintenanceCosts.toLocaleString()}</Text>
+        ) : (
+          <>
+            <View style={styles.summaryCard}>
+              <View style={styles.summaryHeader}>
+                <Text style={styles.summaryTitle}>Total Expenses</Text>
+                <View style={styles.periodSelector}>
+                  <TouchableOpacity 
+                    style={[styles.periodButton, periodFilter === 'monthly' && styles.periodButtonActive]}
+                    onPress={() => setPeriodFilter('monthly')}
+                  >
+                    <Text style={[styles.periodText, periodFilter === 'monthly' && styles.periodTextActive]}>Monthly</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.periodButton, periodFilter === 'yearly' && styles.periodButtonActive]}
+                    onPress={() => setPeriodFilter('yearly')}
+                  >
+                    <Text style={[styles.periodText, periodFilter === 'yearly' && styles.periodTextActive]}>Yearly</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity 
+                    style={[styles.periodButton, periodFilter === 'all' && styles.periodButtonActive]}
+                    onPress={() => setPeriodFilter('all')}
+                  >
+                    <Text style={[styles.periodText, periodFilter === 'all' && styles.periodTextActive]}>All</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+              
+              <Text style={styles.totalAmount}>${totalCosts.toLocaleString()}</Text>
+              
+              <View style={styles.chartControls}>
+                <TouchableOpacity style={styles.chartButton}>
+                  <PieChart size={18} color="#334155" />
+                  <Text style={styles.chartButtonText}>Categories</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.chartButton}>
+                  <BarChart4 size={18} color="#334155" />
+                  <Text style={styles.chartButtonText}>Timeline</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <View style={styles.categorySummary}>
+                <View style={styles.categoryItem}>
+                  <View style={[styles.categoryDot, { backgroundColor: '#0D9488' }]} />
+                  <Text style={styles.categoryName}>Maintenance</Text>
+                  <Text style={styles.categoryAmount}>${maintenanceCosts.toLocaleString()}</Text>
+                </View>
+                <View style={styles.categoryItem}>
+                  <View style={[styles.categoryDot, { backgroundColor: '#F59E0B' }]} />
+                  <Text style={styles.categoryName}>Repairs</Text>
+                  <Text style={styles.categoryAmount}>${repairCosts.toLocaleString()}</Text>
+                </View>
+                <View style={styles.categoryItem}>
+                  <View style={[styles.categoryDot, { backgroundColor: '#6366F1' }]} />
+                  <Text style={styles.categoryName}>Upgrades</Text>
+                  <Text style={styles.categoryAmount}>${upgradeCosts.toLocaleString()}</Text>
+                </View>
+                <View style={styles.categoryItem}>
+                  <View style={[styles.categoryDot, { backgroundColor: '#EC4899' }]} />
+                  <Text style={styles.categoryName}>Fuel</Text>
+                  <Text style={styles.categoryAmount}>${fuelCosts.toLocaleString()}</Text>
+                </View>
+              </View>
             </View>
-            <View style={styles.categoryItem}>
-              <View style={[styles.categoryDot, { backgroundColor: '#F59E0B' }]} />
-              <Text style={styles.categoryName}>Repairs</Text>
-              <Text style={styles.categoryAmount}>${repairCosts.toLocaleString()}</Text>
-            </View>
-            <View style={styles.categoryItem}>
-              <View style={[styles.categoryDot, { backgroundColor: '#6366F1' }]} />
-              <Text style={styles.categoryName}>Upgrades</Text>
-              <Text style={styles.categoryAmount}>${upgradeCosts.toLocaleString()}</Text>
-            </View>
-            <View style={styles.categoryItem}>
-              <View style={[styles.categoryDot, { backgroundColor: '#EC4899' }]} />
-              <Text style={styles.categoryName}>Fuel</Text>
-              <Text style={styles.categoryAmount}>${fuelCosts.toLocaleString()}</Text>
-            </View>
-          </View>
-        </View>
-        
-        <View style={styles.recentContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent Expenses</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.transactionsList} showsVerticalScrollIndicator={false}>
-            {costData.slice(0, 10).map((item) => (
-              <CostItem 
-                key={item.id}
-                item={item}
-                onPress={() => router.push(`/costs/${item.id}`)}
-              />
-            ))}
             
-            <View style={styles.emptySpace} />
-          </ScrollView>
-        </View>
+            <View style={styles.recentContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Recent Expenses</Text>
+                <TouchableOpacity>
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.transactionsList} showsVerticalScrollIndicator={false}>
+                {costs.slice(0, 10).map((item) => (
+                  <CostItem 
+                    key={item.id}
+                    item={item}
+                    onPress={() => router.push(`/costs/${item.id}`)}
+                  />
+                ))}
+
+                {costs.length === 0 && (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>No expenses recorded yet</Text>
+                    <TouchableOpacity 
+                      style={styles.emptyStateButton}
+                      onPress={() => router.push('/costs/add')}
+                    >
+                      <Text style={styles.emptyStateButtonText}>Add First Expense</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                <View style={styles.emptySpace} />
+              </ScrollView>
+            </View>
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -153,6 +180,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  errorMessage: {
+    backgroundColor: '#FEE2E2',
+    padding: 16,
+    margin: 16,
+    borderRadius: 8,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  loadingState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
   },
   summaryCard: {
     margin: 16,
@@ -272,6 +321,28 @@ const styles = StyleSheet.create({
   },
   transactionsList: {
     flex: 1,
+  },
+  emptyState: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  emptyStateButton: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  emptyStateButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#334155',
   },
   emptySpace: {
     height: 100,

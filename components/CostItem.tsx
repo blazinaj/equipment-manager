@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { Wrench, Settings, Fuel, Car, Ban } from 'lucide-react-native';
-import { Cost } from '@/types/cost';
+import { Cost } from '@/hooks/useCosts';
 
 interface CostItemProps {
   item: Cost;
@@ -50,12 +50,11 @@ export function CostItem({ item, onPress }: CostItemProps) {
         </View>
         <View style={styles.footer}>
           <View style={styles.details}>
-            <Text style={styles.equipment}>{item.equipmentName}</Text>
             <View style={styles.category}>
               <Text style={styles.categoryText}>{getCategoryName()}</Text>
             </View>
           </View>
-          <Text style={styles.date}>{item.date}</Text>
+          <Text style={styles.date}>{new Date(item.date).toLocaleDateString()}</Text>
         </View>
       </View>
     </TouchableOpacity>
@@ -109,12 +108,6 @@ const styles = StyleSheet.create({
   details: {
     flexDirection: 'row',
     alignItems: 'center',
-  },
-  equipment: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#64748B',
-    marginRight: 8,
   },
   category: {
     backgroundColor: '#F1F5F9',

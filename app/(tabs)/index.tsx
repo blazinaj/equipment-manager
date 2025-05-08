@@ -1,31 +1,21 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Image, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Plus, Filter, Search } from 'lucide-react-native';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import { EquipmentCard } from '@/components/EquipmentCard';
 import { StatusBar } from 'expo-status-bar';
-import { equipmentData } from '@/data/equipmentData';
+import { useEquipment } from '@/hooks/useEquipment';
 
 export default function EquipmentScreen() {
   const router = useRouter();
-  const [selectedType, setSelectedType] = useState<string>('All');
-  const [selectedStatus, setSelectedStatus] = useState<'All' | 'Good' | 'Fair' | 'Poor'>('All');
-  const [showStatusFilter, setShowStatusFilter] = useState(false);
+  const { equipment, loading, error } = useEquipment();
+  const [selectedCategory, setSelectedCategory] = useState('All');
   
-  // Get unique equipment types
-  const equipmentTypes = useMemo(() => {
-    const types = new Set(equipmentData.map(item => item.type));
-    return ['All', ...Array.from(types)];
-  }, []);
-
-  // Filter equipment based on selected type and status
-  const filteredEquipment = useMemo(() => {
-    return equipmentData.filter(item => {
-      const typeMatch = selectedType === 'All' || item.type === selectedType;
-      const statusMatch = selectedStatus === 'All' || item.status === selectedStatus;
-      return typeMatch && statusMatch;
-    });
-  }, [selectedType, selectedStatus]);
+  const categories = ['All', 'Vehicles', 'Motorcycles', 'Lawn & Garden', 'Equipment'];
+  
+  const filteredEquipment = selectedCategory === 'All' 
+    ? equipment 
+    : equipment.filter(item => item.type === selectedCategory);
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -42,55 +32,17 @@ export default function EquipmentScreen() {
         </View>
         
         <View style={styles.searchContainer}>
-          <View style={styles.searchBar}>
-            <Search size={20} color="#94A3B8" />
-            <TouchableOpacity 
-              style={styles.searchInputContainer}
-              onPress={() => router.push('/equipment/search')}
-            >
-              <Text style={styles.searchPlaceholder}>Search equipment...</Text>
-            </TouchableOpacity>
-          </View>
           <TouchableOpacity 
-            style={[styles.filterButton, showStatusFilter && styles.filterButtonActive]}
-            onPress={() => setShowStatusFilter(!showStatusFilter)}
+            style={styles.searchBar}
+            onPress={() => router.push('/equipment/search')}
           >
-            <Filter size={20} color={showStatusFilter ? '#FFFFFF' : '#334155'} />
+            <Search size={20} color="#94A3B8" />
+            <Text style={styles.searchPlaceholder}>Search equipment...</Text>
+          </TouchableOpacity>
+          <TouchableOpacity style={styles.filterButton}>
+            <Filter size={20} color="#334155" />
           </TouchableOpacity>
         </View>
-
-        {showStatusFilter && (
-          <View style={styles.statusFilterContainer}>
-            <Text style={styles.filterLabel}>Filter by Status:</Text>
-            <ScrollView 
-              horizontal 
-              showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.statusButtons}
-            >
-              {(['All', 'Good', 'Fair', 'Poor'] as const).map((status) => (
-                <TouchableOpacity
-                  key={status}
-                  style={[
-                    styles.statusButton,
-                    selectedStatus === status && styles.statusButtonActive,
-                    selectedStatus === status && {
-                      backgroundColor: status === 'Good' ? '#DCFCE7' :
-                                     status === 'Fair' ? '#FEF9C3' :
-                                     status === 'Poor' ? '#FEE2E2' :
-                                     '#334155'
-                    }
-                  ]}
-                  onPress={() => setSelectedStatus(status)}
-                >
-                  <Text style={[
-                    styles.statusButtonText,
-                    selectedStatus === status && styles.statusButtonTextActive
-                  ]}>{status}</Text>
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        )}
         
         <View style={styles.categoriesContainer}>
           <ScrollView 
@@ -98,48 +50,63 @@ export default function EquipmentScreen() {
             showsHorizontalScrollIndicator={false} 
             contentContainerStyle={styles.categoriesScroll}
           >
-            {equipmentTypes.map((type) => (
-              <TouchableOpacity
-                key={type}
+            {categories.map((category) => (
+              <TouchableOpacity 
+                key={category}
                 style={[
                   styles.categoryButton,
-                  selectedType === type && styles.categoryButtonActive
+                  selectedCategory === category && styles.categoryButtonActive
                 ]}
-                onPress={() => setSelectedType(type)}
+                onPress={() => setSelectedCategory(category)}
               >
                 <Text style={[
                   styles.categoryText,
-                  selectedType === type && styles.categoryTextActive
-                ]}>{type}</Text>
+                  selectedCategory === category && styles.categoryTextActive
+                ]}>
+                  {category}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
         
         <ScrollView style={styles.equipmentList} showsVerticalScrollIndicator={false}>
-          {filteredEquipment.length === 0 ? (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyStateTitle}>No equipment found</Text>
-              <Text style={styles.emptyStateText}>
-                Try adjusting your filters or add new equipment
-              </Text>
-              <TouchableOpacity 
-                style={styles.addFirstButton}
-                onPress={() => router.push('/equipment/add')}
-              >
-                <Text style={styles.addFirstButtonText}>Add Equipment</Text>
-              </TouchableOpacity>
+          {error && (
+            <View style={styles.errorMessage}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+          
+          {loading ? (
+            <View style={styles.loadingState}>
+              <Text style={styles.loadingText}>Loading equipment...</Text>
             </View>
           ) : (
-            <View style={styles.equipmentGrid}>
-              {filteredEquipment.map((item) => (
-                <EquipmentCard 
-                  key={item.id}
-                  equipment={item}
-                  onPress={() => router.push(`/equipment/${item.id}`)}
-                />
-              ))}
-            </View>
+            <>
+              <View style={styles.equipmentGrid}>
+                {filteredEquipment.map((item) => (
+                  <EquipmentCard 
+                    key={item.id}
+                    equipment={item}
+                    onPress={() => router.push(`/equipment/${item.id}`)}
+                  />
+                ))}
+              </View>
+              
+              {filteredEquipment.length === 0 && (
+                <View style={styles.emptyState}>
+                  <Text style={styles.emptyStateText}>
+                    No equipment found in this category
+                  </Text>
+                  <TouchableOpacity 
+                    style={styles.emptyStateButton}
+                    onPress={() => setSelectedCategory('All')}
+                  >
+                    <Text style={styles.emptyStateButtonText}>Show All Equipment</Text>
+                  </TouchableOpacity>
+                </View>
+              )}
+            </>
           )}
           
           <View style={styles.emptySpace} />
@@ -203,11 +170,6 @@ const styles = StyleSheet.create({
     borderColor: '#E2E8F0',
     marginRight: 8,
   },
-  searchInputContainer: {
-    flex: 1,
-    height: '100%',
-    justifyContent: 'center',
-  },
   searchPlaceholder: {
     marginLeft: 8,
     color: '#94A3B8',
@@ -223,42 +185,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     borderWidth: 1,
     borderColor: '#E2E8F0',
-  },
-  filterButtonActive: {
-    backgroundColor: '#334155',
-    borderColor: '#334155',
-  },
-  statusFilterContainer: {
-    paddingHorizontal: 16,
-    marginBottom: 16,
-  },
-  filterLabel: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  statusButtons: {
-    flexDirection: 'row',
-    gap: 8,
-  },
-  statusButton: {
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 16,
-    backgroundColor: '#F1F5F9',
-  },
-  statusButtonActive: {
-    borderWidth: 1,
-    borderColor: '#334155',
-  },
-  statusButtonText: {
-    fontSize: 14,
-    fontFamily: 'Inter-Medium',
-    color: '#64748B',
-  },
-  statusButtonTextActive: {
-    color: '#334155',
   },
   categoriesContainer: {
     marginBottom: 16,
@@ -295,35 +221,49 @@ const styles = StyleSheet.create({
     flexWrap: 'wrap',
     paddingHorizontal: 8,
   },
-  emptyState: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+  errorMessage: {
+    backgroundColor: '#FEE2E2',
+    padding: 16,
+    margin: 16,
+    borderRadius: 8,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  loadingState: {
     padding: 24,
+    alignItems: 'center',
   },
-  emptyStateTitle: {
-    fontSize: 18,
-    fontFamily: 'Inter-Bold',
-    color: '#334155',
-    marginBottom: 8,
-  },
-  emptyStateText: {
-    fontSize: 14,
+  loadingText: {
+    fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#64748B',
     textAlign: 'center',
-    marginBottom: 16,
   },
-  addFirstButton: {
-    backgroundColor: '#334155',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
+  emptyState: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  emptyStateButton: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
   },
-  addFirstButtonText: {
-    fontSize: 16,
+  emptyStateButtonText: {
+    fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#FFFFFF',
+    color: '#334155',
   },
   emptySpace: {
     height: 100,

@@ -28,6 +28,7 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <LayoutGrid size={size} color={color} />
           ),
+          href: '/',
         }}
       />
       <Tabs.Screen
@@ -57,68 +58,75 @@ export default function TabLayout() {
           tabBarIcon: ({ color, size }) => (
             <Settings size={size} color={color} />
           ),
+          href: '/settings',
         }}
       />
-      
+
       {/* Hide all detail/edit/add screens from tab bar */}
       <Tabs.Screen
         name="equipment/[id]"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="equipment/add"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="equipment/search"
         options={{
-          href: null,
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="equipment/edit/[id]"
+        options={{
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="maintenance/[id]"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="maintenance/add"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="maintenance/edit/[id]"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="costs/[id]"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="costs/add"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="equipment/[id]/upgrades/[upgradeId]"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
       <Tabs.Screen
         name="equipment/[id]/upgrades/add"
         options={{
-          href: null,
+          tabBarButton: () => null,
         }}
       />
     </Tabs>

@@ -1,6 +1,6 @@
 import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { CalendarClock, Wrench } from 'lucide-react-native';
-import { Equipment } from '@/types/equipment';
+import { Equipment } from '@/hooks/useEquipment';
 
 interface EquipmentCardProps {
   equipment: Equipment;
@@ -11,7 +11,7 @@ export function EquipmentCard({ equipment, onPress }: EquipmentCardProps) {
   return (
     <TouchableOpacity style={styles.card} onPress={onPress}>
       <Image
-        source={{ uri: equipment.image }}
+        source={{ uri: equipment.image_url || 'https://images.pexels.com/photos/2533092/pexels-photo-2533092.jpeg?auto=compress&cs=tinysrgb&w=800' }}
         style={styles.image}
         resizeMode="cover"
       />
@@ -33,12 +33,12 @@ export function EquipmentCard({ equipment, onPress }: EquipmentCardProps) {
           <View style={styles.infoItem}>
             <CalendarClock size={14} color="#64748B" />
             <Text style={styles.infoText}>
-              {equipment.nextMaintenanceDate ? equipment.nextMaintenanceDate : 'No scheduled maintenance'}
+              {new Date(equipment.purchase_date).toLocaleDateString()}
             </Text>
           </View>
           <View style={styles.infoItem}>
             <Wrench size={14} color="#64748B" />
-            <Text style={styles.infoText}>{equipment.maintenanceCount} records</Text>
+            <Text style={styles.infoText}>${equipment.purchase_price.toLocaleString()}</Text>
           </View>
         </View>
       </View>

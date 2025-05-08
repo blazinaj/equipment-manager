@@ -3,10 +3,14 @@ import { useRouter } from 'expo-router';
 import { Calendar, Plus, ChevronRight } from 'lucide-react-native';
 import { StatusBar } from 'expo-status-bar';
 import { MaintenanceItem } from '@/components/MaintenanceItem';
-import { maintenanceData } from '@/data/maintenanceData';
+import { useMaintenance } from '@/hooks/useMaintenance';
 
 export default function MaintenanceScreen() {
   const router = useRouter();
+  const { records, loading, error } = useMaintenance();
+  
+  const upcomingMaintenance = records.filter(item => item.status === 'upcoming');
+  const completedMaintenance = records.filter(item => item.status === 'completed');
   
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -21,58 +25,91 @@ export default function MaintenanceScreen() {
             <Plus size={24} color="#FFFFFF" />
           </TouchableOpacity>
         </View>
-        
-        <View style={styles.upcomingContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Upcoming</Text>
-            <Calendar size={20} color="#64748B" />
+
+        {error && (
+          <View style={styles.errorMessage}>
+            <Text style={styles.errorText}>{error}</Text>
           </View>
-          
-          <ScrollView 
-            horizontal 
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.upcomingScroll}
-          >
-            {maintenanceData.filter(item => item.status === 'upcoming').slice(0, 3).map((item) => (
-              <TouchableOpacity 
-                key={item.id} 
-                style={styles.upcomingCard}
-                onPress={() => router.push(`/maintenance/${item.id}`)}
+        )}
+        
+        {loading ? (
+          <View style={styles.loadingState}>
+            <Text style={styles.loadingText}>Loading maintenance records...</Text>
+          </View>
+        ) : (
+          <>
+            <View style={styles.upcomingContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Upcoming</Text>
+                <Calendar size={20} color="#64748B" />
+              </View>
+              
+              <ScrollView 
+                horizontal 
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.upcomingScroll}
               >
-                <View style={styles.upcomingCardContent}>
-                  <Text style={styles.upcomingDate}>{item.dueDate}</Text>
-                  <Text style={styles.upcomingTitle}>{item.title}</Text>
-                  <Text style={styles.upcomingEquipment}>{item.equipmentName}</Text>
-                </View>
-              </TouchableOpacity>
-            ))}
-            <TouchableOpacity style={styles.viewAllCard}>
-              <Text style={styles.viewAllText}>View All</Text>
-              <ChevronRight size={16} color="#334155" />
-            </TouchableOpacity>
-          </ScrollView>
-        </View>
-        
-        <View style={styles.historyContainer}>
-          <View style={styles.sectionHeader}>
-            <Text style={styles.sectionTitle}>Recent History</Text>
-            <TouchableOpacity>
-              <Text style={styles.viewAllText}>View All</Text>
-            </TouchableOpacity>
-          </View>
-          
-          <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
-            {maintenanceData.filter(item => item.status === 'completed').slice(0, 5).map((item) => (
-              <MaintenanceItem 
-                key={item.id}
-                item={item}
-                onPress={() => router.push(`/maintenance/${item.id}`)}
-              />
-            ))}
+                {upcomingMaintenance.slice(0, 3).map((item) => (
+                  <TouchableOpacity 
+                    key={item.id} 
+                    style={styles.upcomingCard}
+                    onPress={() => router.push(`/maintenance/${item.id}`)}
+                  >
+                    <View style={styles.upcomingCardContent}>
+                      <Text style={styles.upcomingDate}>{new Date(item.due_date).toLocaleDateString()}</Text>
+                      <Text style={styles.upcomingTitle}>{item.title}</Text>
+                      <Text style={styles.upcomingEquipment}>${item.cost.toLocaleString()}</Text>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+                {upcomingMaintenance.length > 3 && (
+                  <TouchableOpacity style={styles.viewAllCard}>
+                    <Text style={styles.viewAllText}>View All</Text>
+                    <ChevronRight size={16} color="#334155" />
+                  </TouchableOpacity>
+                )}
+                {upcomingMaintenance.length === 0 && (
+                  <View style={styles.emptyUpcomingCard}>
+                    <Text style={styles.emptyStateText}>No upcoming maintenance</Text>
+                  </View>
+                )}
+              </ScrollView>
+            </View>
             
-            <View style={styles.emptySpace} />
-          </ScrollView>
-        </View>
+            <View style={styles.historyContainer}>
+              <View style={styles.sectionHeader}>
+                <Text style={styles.sectionTitle}>Recent History</Text>
+                <TouchableOpacity>
+                  <Text style={styles.viewAllText}>View All</Text>
+                </TouchableOpacity>
+              </View>
+              
+              <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
+                {completedMaintenance.slice(0, 5).map((item) => (
+                  <MaintenanceItem 
+                    key={item.id}
+                    item={item}
+                    onPress={() => router.push(`/maintenance/${item.id}`)}
+                  />
+                ))}
+
+                {completedMaintenance.length === 0 && (
+                  <View style={styles.emptyState}>
+                    <Text style={styles.emptyStateText}>No maintenance history</Text>
+                    <TouchableOpacity 
+                      style={styles.emptyStateButton}
+                      onPress={() => router.push('/maintenance/add')}
+                    >
+                      <Text style={styles.emptyStateButtonText}>Add First Record</Text>
+                    </TouchableOpacity>
+                  </View>
+                )}
+                
+                <View style={styles.emptySpace} />
+              </ScrollView>
+            </View>
+          </>
+        )}
       </View>
     </SafeAreaView>
   );
@@ -113,6 +150,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 3,
+  },
+  errorMessage: {
+    backgroundColor: '#FEE2E2',
+    padding: 16,
+    margin: 16,
+    borderRadius: 8,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#EF4444',
+    textAlign: 'center',
+  },
+  loadingState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
   },
   upcomingContainer: {
     marginBottom: 24,
@@ -176,6 +235,15 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexDirection: 'row',
   },
+  emptyUpcomingCard: {
+    width: 200,
+    height: 120,
+    borderRadius: 12,
+    backgroundColor: '#F1F5F9',
+    marginRight: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
   viewAllText: {
     fontSize: 14,
     color: '#334155',
@@ -187,6 +255,28 @@ const styles = StyleSheet.create({
   },
   historyList: {
     flex: 1,
+  },
+  emptyState: {
+    padding: 24,
+    alignItems: 'center',
+  },
+  emptyStateText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  emptyStateButton: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  emptyStateButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#334155',
   },
   emptySpace: {
     height: 100,

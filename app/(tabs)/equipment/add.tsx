@@ -1,52 +1,25 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
-import { useLocalSearchParams, useRouter } from 'expo-router';
+import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, Calendar, DollarSign, Truck, FileText } from 'lucide-react-native';
 import { useState } from 'react';
 import { useEquipment } from '@/hooks/useEquipment';
 
-export default function EditEquipmentScreen() {
-  const { id } = useLocalSearchParams();
+export default function AddEquipmentScreen() {
   const router = useRouter();
-  const { equipment, loading, error: equipmentError, updateEquipment } = useEquipment();
+  const { addEquipment } = useEquipment();
   
-  const currentEquipment = equipment.find(item => item.id === id);
-
-  const [name, setName] = useState(currentEquipment?.name || '');
-  const [type, setType] = useState(currentEquipment?.type || '');
-  const [year, setYear] = useState(currentEquipment?.year.toString() || '');
-  const [status, setStatus] = useState<'Good' | 'Fair' | 'Poor'>(currentEquipment?.status || 'Good');
-  const [purchaseDate, setPurchaseDate] = useState(currentEquipment?.purchase_date || '');
-  const [purchasePrice, setPurchasePrice] = useState(currentEquipment?.purchase_price.toString() || '');
-  const [vinNumber, setVinNumber] = useState(currentEquipment?.vin_number || '');
-  const [licensePlate, setLicensePlate] = useState(currentEquipment?.license_plate || '');
-  const [notes, setNotes] = useState(currentEquipment?.notes || '');
-  const [saving, setSaving] = useState(false);
+  const [name, setName] = useState('');
+  const [type, setType] = useState('');
+  const [year, setYear] = useState('');
+  const [status, setStatus] = useState<'Good' | 'Fair' | 'Poor'>('Good');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [vinNumber, setVinNumber] = useState('');
+  const [licensePlate, setLicensePlate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  if (loading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <Text style={styles.loadingText}>Loading equipment details...</Text>
-      </View>
-    );
-  }
-
-  if (equipmentError || !currentEquipment) {
-    return (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorText}>
-          {equipmentError || 'Equipment not found'}
-        </Text>
-        <TouchableOpacity
-          style={styles.errorButton}
-          onPress={() => router.back()}
-        >
-          <Text style={styles.errorButtonText}>Go Back</Text>
-        </TouchableOpacity>
-      </View>
-    );
-  }
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -75,10 +48,10 @@ export default function EditEquipmentScreen() {
     }
 
     try {
-      setSaving(true);
+      setLoading(true);
       setError(null);
 
-      await updateEquipment(currentEquipment.id, {
+      await addEquipment({
         name,
         type,
         year: parseInt(year),
@@ -92,9 +65,9 @@ export default function EditEquipmentScreen() {
 
       router.back();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update equipment');
+      setError(err instanceof Error ? err.message : 'Failed to add equipment');
     } finally {
-      setSaving(false);
+      setLoading(false);
     }
   };
 
@@ -109,7 +82,7 @@ export default function EditEquipmentScreen() {
         >
           <ArrowLeft size={24} color="#334155" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Edit Equipment</Text>
+        <Text style={styles.headerTitle}>Add Equipment</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -271,12 +244,12 @@ export default function EditEquipmentScreen() {
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
+            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
             onPress={handleSave}
-            disabled={saving}
+            disabled={loading}
           >
             <Text style={styles.saveButtonText}>
-              {saving ? 'Saving...' : 'Save Changes'}
+              {loading ? 'Adding...' : 'Add Equipment'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -291,42 +264,6 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-  },
-  loadingText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Regular',
-    color: '#64748B',
-  },
-  errorContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    padding: 16,
-  },
-  errorText: {
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
-    color: '#EF4444',
-    textAlign: 'center',
-    marginBottom: 16,
-  },
-  errorButton: {
-    backgroundColor: '#334155',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  errorButtonText: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontFamily: 'Inter-Medium',
   },
   header: {
     flexDirection: 'row',
@@ -358,6 +295,12 @@ const styles = StyleSheet.create({
     padding: 16,
     margin: 16,
     borderRadius: 8,
+  },
+  errorText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#EF4444',
+    textAlign: 'center',
   },
   form: {
     padding: 16,

@@ -1,5 +1,7 @@
 import { Redirect } from 'expo-router';
+import { useAuth } from '@/hooks/useAuth';
 
 export default function Root() {
-  return <Redirect href="/(tabs)" />;
+  const { session } = useAuth();
+  return <Redirect href={session ? '/(tabs)' : '/auth/sign-in'} />;
 }
