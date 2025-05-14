@@ -19,6 +19,27 @@ export function useMaintenance(equipmentId?: string) {
     }
   }, [session, equipmentId]);
 
+  // Subscribe to changes
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel('maintenance_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'maintenance_records',
+        filter: equipmentId ? `equipment_id=eq.${equipmentId}` : undefined
+      }, () => {
+        fetchRecords();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, equipmentId]);
+
   const fetchRecords = async () => {
     try {
       setLoading(true);
@@ -48,17 +69,6 @@ export function useMaintenance(equipmentId?: string) {
   const addRecord = async (newRecord: NewMaintenanceRecord) => {
     if (!session?.user.id) throw new Error('User not authenticated');
 
-    // Create optimistic record
-    const optimisticRecord: MaintenanceRecord = {
-      id: crypto.randomUUID(),
-      user_id: session.user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      ...newRecord,
-    };
-
-    setRecords(prev => [optimisticRecord, ...prev]);
-
     try {
       setError(null);
 
@@ -73,34 +83,19 @@ export function useMaintenance(equipmentId?: string) {
 
       if (insertError) throw insertError;
 
-      setRecords(prev => 
-        prev.map(record => 
-          record.id === optimisticRecord.id ? data! : record
-        )
-      );
+      // Update local state optimistically
+      setRecords(prev => [data!, ...prev].sort((a, b) => 
+        new Date(a.due_date).getTime() - new Date(b.due_date).getTime()
+      ));
 
       return data!;
     } catch (err) {
-      setRecords(prev => 
-        prev.filter(record => record.id !== optimisticRecord.id)
-      );
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
   };
 
   const updateRecord = async (id: string, updates: MaintenanceUpdate) => {
-    const originalRecord = records.find(record => record.id === id);
-    if (!originalRecord) throw new Error('Maintenance record not found');
-
-    setRecords(prev => 
-      prev.map(record => 
-        record.id === id 
-          ? { ...record, ...updates, updated_at: new Date().toISOString() }
-          : record
-      )
-    );
-
     try {
       setError(null);
 
@@ -113,25 +108,19 @@ export function useMaintenance(equipmentId?: string) {
 
       if (updateError) throw updateError;
 
-      setRecords(prev => prev.map(record => record.id === id ? data! : record));
+      // Update local state optimistically
+      setRecords(prev => prev.map(record => record.id === id ? data! : record)
+        .sort((a, b) => new Date(a.due_date).getTime() - new Date(b.due_date).getTime())
+      );
+
       return data!;
     } catch (err) {
-      setRecords(prev => 
-        prev.map(record => 
-          record.id === id ? originalRecord : record
-        )
-      );
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
   };
 
   const deleteRecord = async (id: string) => {
-    const deletedRecord = records.find(record => record.id === id);
-    if (!deletedRecord) throw new Error('Maintenance record not found');
-
-    setRecords(prev => prev.filter(record => record.id !== id));
-
     try {
       setError(null);
 
@@ -141,8 +130,10 @@ export function useMaintenance(equipmentId?: string) {
         .eq('id', id);
 
       if (deleteError) throw deleteError;
+
+      // Update local state optimistically
+      setRecords(prev => prev.filter(record => record.id !== id));
     } catch (err) {
-      setRecords(prev => [...prev, deletedRecord]);
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }

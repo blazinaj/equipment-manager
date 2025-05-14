@@ -2,17 +2,28 @@ import { View, Text, StyleSheet, ScrollView, TouchableOpacity, Platform } from '
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, Calendar, DollarSign, PenTool as Tool, Truck, FileText, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Clock, Gauge } from 'lucide-react-native';
-import { maintenanceData } from '@/data/maintenanceData';
-import { equipmentData } from '@/data/equipmentData';
+import { useMaintenance } from '@/hooks/useMaintenance';
+import { useEquipment } from '@/hooks/useEquipment';
 
 export default function MaintenanceDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   
-  const maintenance = maintenanceData.find(item => item.id === id);
-  const equipment = maintenance ? equipmentData.find(item => item.id === maintenance.equipmentId) : null;
+  const { records, loading: maintenanceLoading } = useMaintenance();
+  const { equipment, loading: equipmentLoading } = useEquipment();
+  
+  const maintenance = records.find(item => item.id === id);
+  const equipmentItem = maintenance ? equipment.find(item => item.id === maintenance.equipment_id) : null;
 
-  if (!maintenance || !equipment) {
+  if (maintenanceLoading || equipmentLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <Text style={styles.loadingText}>Loading maintenance details...</Text>
+      </View>
+    );
+  }
+
+  if (!maintenance || !equipmentItem) {
     return (
       <View style={styles.errorContainer}>
         <Text style={styles.errorText}>Maintenance record not found</Text>
@@ -84,11 +95,11 @@ export default function MaintenanceDetailsScreen() {
 
           <TouchableOpacity 
             style={styles.equipmentButton}
-            onPress={() => router.push(`/equipment/${equipment.id}`)}
+            onPress={() => router.push(`/equipment/${equipmentItem.id}`)}
           >
             <Truck size={20} color="#64748B" />
-            <Text style={styles.equipmentName}>{equipment.name}</Text>
-            <Text style={styles.equipmentDetails}>{equipment.type} • {equipment.year}</Text>
+            <Text style={styles.equipmentName}>{equipmentItem.name}</Text>
+            <Text style={styles.equipmentDetails}>{equipmentItem.type} • {equipmentItem.year}</Text>
           </TouchableOpacity>
         </View>
 
@@ -98,23 +109,29 @@ export default function MaintenanceDetailsScreen() {
             <Text style={styles.sectionTitle}>Service Details</Text>
           </View>
           
-          <Text style={styles.description}>{maintenance.description}</Text>
+          {maintenance.description && (
+            <Text style={styles.description}>{maintenance.description}</Text>
+          )}
 
           <View style={styles.detailsGrid}>
             <View style={styles.detailItem}>
               <Calendar size={20} color="#64748B" />
               <View style={styles.detailContent}>
                 <Text style={styles.detailLabel}>Due Date</Text>
-                <Text style={styles.detailValue}>{maintenance.dueDate}</Text>
+                <Text style={styles.detailValue}>
+                  {new Date(maintenance.due_date).toLocaleDateString()}
+                </Text>
               </View>
             </View>
 
-            {maintenance.completedDate && (
+            {maintenance.completed_date && (
               <View style={styles.detailItem}>
                 <CheckCircle2 size={20} color="#64748B" />
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Completed</Text>
-                  <Text style={styles.detailValue}>{maintenance.completedDate}</Text>
+                  <Text style={styles.detailValue}>
+                    {new Date(maintenance.completed_date).toLocaleDateString()}
+                  </Text>
                 </View>
               </View>
             )}
@@ -127,25 +144,27 @@ export default function MaintenanceDetailsScreen() {
               </View>
             </View>
 
-            {maintenance.odometerReading && (
+            {maintenance.odometer_reading && (
               <View style={styles.detailItem}>
                 <Gauge size={20} color="#64748B" />
                 <View style={styles.detailContent}>
                   <Text style={styles.detailLabel}>Odometer</Text>
-                  <Text style={styles.detailValue}>{maintenance.odometerReading.toLocaleString()} miles</Text>
+                  <Text style={styles.detailValue}>
+                    {maintenance.odometer_reading.toLocaleString()} miles
+                  </Text>
                 </View>
               </View>
             )}
           </View>
         </View>
 
-        {maintenance.serviceProvider && (
+        {maintenance.service_provider && (
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <Tool size={20} color="#64748B" />
               <Text style={styles.sectionTitle}>Service Provider</Text>
             </View>
-            <Text style={styles.serviceProvider}>{maintenance.serviceProvider}</Text>
+            <Text style={styles.serviceProvider}>{maintenance.service_provider}</Text>
           </View>
         )}
 
@@ -178,6 +197,17 @@ const styles = StyleSheet.create({
   container: {
     flex: 1,
     backgroundColor: '#F8FAFC',
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+  },
+  loadingText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
   },
   errorContainer: {
     flex: 1,

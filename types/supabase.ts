@@ -38,11 +38,11 @@ export interface Database {
           user_id: string
           name: string
           type: string
-          year: number
+          year: number | null
           status: 'Good' | 'Fair' | 'Poor'
           image_url: string | null
-          purchase_date: string
-          purchase_price: number
+          purchase_date: string | null
+          purchase_price: number | null
           vin_number: string | null
           license_plate: string | null
           notes: string | null
@@ -54,11 +54,11 @@ export interface Database {
           user_id: string
           name: string
           type: string
-          year: number
+          year?: number | null
           status: 'Good' | 'Fair' | 'Poor'
           image_url?: string | null
-          purchase_date: string
-          purchase_price: number
+          purchase_date?: string | null
+          purchase_price?: number | null
           vin_number?: string | null
           license_plate?: string | null
           notes?: string | null
@@ -70,11 +70,11 @@ export interface Database {
           user_id?: string
           name?: string
           type?: string
-          year?: number
+          year?: number | null
           status?: 'Good' | 'Fair' | 'Poor'
           image_url?: string | null
-          purchase_date?: string
-          purchase_price?: number
+          purchase_date?: string | null
+          purchase_price?: number | null
           vin_number?: string | null
           license_plate?: string | null
           notes?: string | null

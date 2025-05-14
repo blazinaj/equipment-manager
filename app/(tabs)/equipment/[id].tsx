@@ -1,17 +1,21 @@
 import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Platform, TextInput, Modal } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Calendar, DollarSign, PenTool as Tool, Truck, FileText, Plus, X, Gauge, PenLine, Trash2 } from 'lucide-react-native';
+import { ArrowLeft, Calendar, DollarSign, PenTool as Tool, Truck, FileText, Plus, X, Gauge, PenLine, Trash2, Receipt, Wrench } from 'lucide-react-native';
 import { useState } from 'react';
 import { MaintenanceItem } from '@/components/MaintenanceItem';
 import { CostItem } from '@/components/CostItem';
 import { UpgradeCard } from '@/components/UpgradeCard';
 import { useEquipment } from '@/hooks/useEquipment';
+import { useMaintenance } from '@/hooks/useMaintenance';
+import { useCosts } from '@/hooks/useCosts';
 
 export default function EquipmentDetailsScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
   const { equipment, loading, error: equipmentError, deleteEquipment } = useEquipment();
+  const { records: maintenanceRecords, loading: maintenanceLoading } = useMaintenance(id as string);
+  const { costs, loading: costsLoading } = useCosts(id as string);
   
   const currentEquipment = equipment.find(item => item.id === id);
   
@@ -197,6 +201,66 @@ export default function EquipmentDetailsScreen() {
             <Text style={styles.notes}>{currentEquipment.notes}</Text>
           </View>
         )}
+
+        {/* Maintenance Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <Wrench size={20} color="#64748B" />
+              <Text style={styles.sectionTitle}>Maintenance</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => router.push('/maintenance/add')}
+            >
+              <Plus size={20} color="#334155" />
+            </TouchableOpacity>
+          </View>
+
+          {maintenanceLoading ? (
+            <Text style={styles.loadingText}>Loading maintenance records...</Text>
+          ) : maintenanceRecords.length > 0 ? (
+            maintenanceRecords.map((record) => (
+              <MaintenanceItem
+                key={record.id}
+                item={record}
+                onPress={() => router.push(`/maintenance/${record.id}`)}
+              />
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No maintenance records yet</Text>
+          )}
+        </View>
+
+        {/* Costs Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <Receipt size={20} color="#64748B" />
+              <Text style={styles.sectionTitle}>Expenses</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => router.push('/costs/add')}
+            >
+              <Plus size={20} color="#334155" />
+            </TouchableOpacity>
+          </View>
+
+          {costsLoading ? (
+            <Text style={styles.loadingText}>Loading expenses...</Text>
+          ) : costs.length > 0 ? (
+            costs.map((cost) => (
+              <CostItem
+                key={cost.id}
+                item={cost}
+                onPress={() => router.push(`/costs/${cost.id}`)}
+              />
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No expenses recorded yet</Text>
+          )}
+        </View>
 
         <View style={styles.emptySpace} />
       </ScrollView>
@@ -594,6 +658,49 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#334155',
     lineHeight: 20,
+  },
+  section: {
+    backgroundColor: '#FFFFFF',
+    marginHorizontal: 16,
+    marginBottom: 24,
+    padding: 16,
+    borderRadius: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.1,
+    shadowRadius: 2,
+    elevation: 2,
+  },
+  sectionHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 16,
+  },
+  sectionTitleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  sectionTitle: {
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#334155',
+    marginLeft: 8,
+  },
+  addButton: {
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  emptyText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
+    textAlign: 'center',
+    marginVertical: 12,
   },
   modalOverlay: {
     flex: 1,

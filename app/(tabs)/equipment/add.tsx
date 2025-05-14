@@ -1,16 +1,28 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Image } from 'react-native';
 import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Calendar, DollarSign, Truck, FileText } from 'lucide-react-native';
+import { ArrowLeft, DollarSign, Truck, FileText, Camera } from 'lucide-react-native';
 import { useState } from 'react';
 import { useEquipment } from '@/hooks/useEquipment';
+import { DatePicker } from '@/components/DatePicker';
+import { YearPicker } from '@/components/YearPicker';
+
+const EQUIPMENT_TYPES = [
+  'Vehicle',
+  'Motorcycle',
+  'Lawn & Garden',
+  'Construction',
+  'Watercraft',
+  'Recreational',
+  'Other'
+];
 
 export default function AddEquipmentScreen() {
   const router = useRouter();
-  const { addEquipment } = useEquipment();
+  const { addEquipment, defaultImages } = useEquipment();
   
   const [name, setName] = useState('');
-  const [type, setType] = useState('');
+  const [type, setType] = useState<keyof typeof defaultImages>('Vehicle');
   const [year, setYear] = useState('');
   const [status, setStatus] = useState<'Good' | 'Fair' | 'Poor'>('Good');
   const [purchaseDate, setPurchaseDate] = useState('');
@@ -18,8 +30,16 @@ export default function AddEquipmentScreen() {
   const [vinNumber, setVinNumber] = useState('');
   const [licensePlate, setLicensePlate] = useState('');
   const [notes, setNotes] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+    }
+  };
 
   const handleSave = async () => {
     if (!name.trim()) {
@@ -32,18 +52,21 @@ export default function AddEquipmentScreen() {
       return;
     }
 
-    if (!year.trim() || isNaN(Number(year))) {
-      setError('Valid year is required');
+    // Year validation - optional but must be valid if provided
+    if (year && (isNaN(Number(year)) || Number(year) < 1900 || Number(year) > new Date().getFullYear())) {
+      setError('Please enter a valid year between 1900 and ' + new Date().getFullYear());
       return;
     }
 
-    if (!purchaseDate.trim()) {
-      setError('Purchase date is required');
+    // Purchase price validation - optional but must be valid if provided
+    if (purchasePrice && (isNaN(Number(purchasePrice)) || Number(purchasePrice) < 0)) {
+      setError('Please enter a valid purchase price');
       return;
     }
 
-    if (!purchasePrice.trim() || isNaN(Number(purchasePrice))) {
-      setError('Valid purchase price is required');
+    // Purchase date validation - optional but must be valid if provided
+    if (purchaseDate && isNaN(Date.parse(purchaseDate))) {
+      setError('Please enter a valid purchase date');
       return;
     }
 
@@ -54,13 +77,14 @@ export default function AddEquipmentScreen() {
       await addEquipment({
         name,
         type,
-        year: parseInt(year),
+        year: year ? parseInt(year) : null,
         status,
-        purchase_date: purchaseDate,
-        purchase_price: parseFloat(purchasePrice),
+        purchase_date: purchaseDate || null,
+        purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
         vin_number: vinNumber || null,
         license_plate: licensePlate || null,
         notes: notes || null,
+        imageFile: imageFile || undefined,
       });
 
       router.back();
@@ -92,6 +116,30 @@ export default function AddEquipmentScreen() {
           </View>
         )}
 
+        <View style={styles.imageSection}>
+          <Image
+            source={{ uri: imageFile ? URL.createObjectURL(imageFile) : defaultImages[type] }}
+            style={styles.previewImage}
+            resizeMode="cover"
+          />
+          <TouchableOpacity 
+            style={styles.uploadButton}
+            onPress={() => document.getElementById('image-input')?.click()}
+          >
+            <Camera size={20} color="#334155" />
+            <Text style={styles.uploadButtonText}>
+              {imageFile ? 'Change Image' : 'Upload Image'}
+            </Text>
+          </TouchableOpacity>
+          <input
+            id="image-input"
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            style={{ display: 'none' }}
+          />
+        </View>
+
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Name</Text>
@@ -108,22 +156,40 @@ export default function AddEquipmentScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Type</Text>
-            <TextInput
-              style={styles.input}
-              value={type}
-              onChangeText={setType}
-              placeholder="Enter equipment type"
-            />
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.typeList}
+            >
+              {EQUIPMENT_TYPES.map((equipmentType) => (
+                <TouchableOpacity
+                  key={equipmentType}
+                  style={[
+                    styles.typeButton,
+                    type === equipmentType && styles.typeButtonSelected
+                  ]}
+                  onPress={() => setType(equipmentType as keyof typeof defaultImages)}
+                >
+                  <Text 
+                    style={[
+                      styles.typeButtonText,
+                      type === equipmentType && styles.typeButtonTextSelected
+                    ]}
+                  >
+                    {equipmentType}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Year</Text>
-            <TextInput
-              style={styles.input}
+            <YearPicker
               value={year}
-              onChangeText={setYear}
-              placeholder="Enter year"
-              keyboardType="numeric"
+              onChange={setYear}
+              minYear={1900}
+              maxYear={new Date().getFullYear()}
             />
           </View>
 
@@ -174,15 +240,10 @@ export default function AddEquipmentScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Purchase Date</Text>
-            <View style={styles.inputWithIcon}>
-              <Calendar size={20} color="#64748B" />
-              <TextInput
-                style={styles.iconInput}
-                value={purchaseDate}
-                onChangeText={setPurchaseDate}
-                placeholder="YYYY-MM-DD"
-              />
-            </View>
+            <DatePicker
+              value={purchaseDate}
+              onChange={setPurchaseDate}
+            />
           </View>
 
           <View style={styles.inputGroup}>
@@ -239,6 +300,7 @@ export default function AddEquipmentScreen() {
           <TouchableOpacity 
             style={styles.cancelButton}
             onPress={() => router.back()}
+            disabled={loading}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
@@ -302,6 +364,31 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     textAlign: 'center',
   },
+  imageSection: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  uploadButtonText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#334155',
+  },
   form: {
     padding: 16,
   },
@@ -343,6 +430,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#334155',
+  },
+  typeList: {
+    paddingVertical: 4,
+    gap: 8,
+  },
+  typeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  typeButtonSelected: {
+    backgroundColor: '#334155',
+  },
+  typeButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#64748B',
+  },
+  typeButtonTextSelected: {
+    color: '#FFFFFF',
   },
   statusButtons: {
     flexDirection: 'row',

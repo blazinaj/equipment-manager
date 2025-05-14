@@ -3,24 +3,54 @@ import { useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { ArrowLeft, Calendar, DollarSign, PenTool as Tool, Truck, FileText, Gauge } from 'lucide-react-native';
 import { useState } from 'react';
-import { equipmentData } from '@/data/equipmentData';
+import { useEquipment } from '@/hooks/useEquipment';
+import { useMaintenance } from '@/hooks/useMaintenance';
+import { DatePicker } from '@/components/DatePicker';
+
+const MAINTENANCE_TYPES = [
+  'Oil Change',
+  'Tire Rotation',
+  'Brake Service',
+  'Air Filter',
+  'Spark Plugs',
+  'Transmission Service',
+  'Coolant Flush',
+  'Valve Adjustment',
+  'Belt Replacement',
+  'Battery Service',
+  'Custom'
+] as const;
 
 export default function AddMaintenanceScreen() {
   const router = useRouter();
-  const [selectedEquipment, setSelectedEquipment] = useState(equipmentData[0]);
+  const { equipment, loading: equipmentLoading } = useEquipment();
+  const { addRecord } = useMaintenance();
   
-  const [title, setTitle] = useState('');
+  const [selectedEquipment, setSelectedEquipment] = useState<string | null>(null);
+  const [selectedType, setSelectedType] = useState<typeof MAINTENANCE_TYPES[number] | null>(null);
+  const [customTitle, setCustomTitle] = useState('');
   const [description, setDescription] = useState('');
   const [dueDate, setDueDate] = useState('');
   const [cost, setCost] = useState('');
   const [odometerReading, setOdometerReading] = useState('');
   const [serviceProvider, setServiceProvider] = useState('');
   const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSave = () => {
-    if (!title.trim()) {
-      setError('Title is required');
+  const handleSave = async () => {
+    if (!selectedEquipment) {
+      setError('Please select equipment');
+      return;
+    }
+
+    if (!selectedType) {
+      setError('Please select maintenance type');
+      return;
+    }
+
+    if (selectedType === 'Custom' && !customTitle.trim()) {
+      setError('Please enter maintenance title');
       return;
     }
 
@@ -34,9 +64,33 @@ export default function AddMaintenanceScreen() {
       return;
     }
 
-    // In a real app, this would save to the database
-    // For now, we'll just go back
-    router.back();
+    if (odometerReading && isNaN(Number(odometerReading))) {
+      setError('Odometer reading must be a valid number');
+      return;
+    }
+
+    try {
+      setSaving(true);
+      setError(null);
+
+      await addRecord({
+        equipment_id: selectedEquipment,
+        title: selectedType === 'Custom' ? customTitle : selectedType,
+        description: description || null,
+        status: 'upcoming',
+        due_date: dueDate,
+        cost: parseFloat(cost),
+        odometer_reading: odometerReading ? parseInt(odometerReading) : null,
+        service_provider: serviceProvider || null,
+        notes: notes || null,
+      });
+
+      router.back();
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to add maintenance record');
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -62,36 +116,74 @@ export default function AddMaintenanceScreen() {
 
         <View style={styles.equipmentSelector}>
           <Text style={styles.sectionTitle}>Select Equipment</Text>
+          {equipmentLoading ? (
+            <Text style={styles.loadingText}>Loading equipment...</Text>
+          ) : (
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.equipmentList}
+            >
+              {equipment.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={[
+                    styles.equipmentCard,
+                    selectedEquipment === item.id && styles.equipmentCardSelected
+                  ]}
+                  onPress={() => setSelectedEquipment(item.id)}
+                >
+                  <Truck size={20} color={selectedEquipment === item.id ? '#FFFFFF' : '#64748B'} />
+                  <Text 
+                    style={[
+                      styles.equipmentName,
+                      selectedEquipment === item.id && styles.equipmentNameSelected
+                    ]}
+                  >
+                    {item.name}
+                  </Text>
+                  <Text 
+                    style={[
+                      styles.equipmentType,
+                      selectedEquipment === item.id && styles.equipmentTypeSelected
+                    ]}
+                  >
+                    {item.type} • {item.year}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          )}
+        </View>
+
+        <View style={styles.maintenanceTypeSelector}>
+          <Text style={styles.sectionTitle}>Maintenance Type</Text>
           <ScrollView 
             horizontal 
             showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.equipmentList}
+            contentContainerStyle={styles.typeList}
           >
-            {equipmentData.map((item) => (
+            {MAINTENANCE_TYPES.map((type) => (
               <TouchableOpacity
-                key={item.id}
+                key={type}
                 style={[
-                  styles.equipmentCard,
-                  selectedEquipment?.id === item.id && styles.equipmentCardSelected
+                  styles.typeButton,
+                  selectedType === type && styles.typeButtonSelected
                 ]}
-                onPress={() => setSelectedEquipment(item)}
+                onPress={() => {
+                  setSelectedType(type);
+                  if (type !== 'Custom') {
+                    setCustomTitle('');
+                  }
+                }}
               >
-                <Truck size={20} color={selectedEquipment?.id === item.id ? '#FFFFFF' : '#64748B'} />
                 <Text 
                   style={[
-                    styles.equipmentName,
-                    selectedEquipment?.id === item.id && styles.equipmentNameSelected
+                    styles.typeButtonText,
+                    selectedType === type && styles.typeButtonTextSelected
                   ]}
                 >
-                  {item.name}
-                </Text>
-                <Text 
-                  style={[
-                    styles.equipmentType,
-                    selectedEquipment?.id === item.id && styles.equipmentTypeSelected
-                  ]}
-                >
-                  {item.type} • {item.year}
+                  {type}
                 </Text>
               </TouchableOpacity>
             ))}
@@ -99,15 +191,17 @@ export default function AddMaintenanceScreen() {
         </View>
 
         <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Title</Text>
-            <TextInput
-              style={styles.input}
-              value={title}
-              onChangeText={setTitle}
-              placeholder="Enter maintenance title"
-            />
-          </View>
+          {selectedType === 'Custom' && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Custom Title</Text>
+              <TextInput
+                style={styles.input}
+                value={customTitle}
+                onChangeText={setCustomTitle}
+                placeholder="Enter maintenance title"
+              />
+            </View>
+          )}
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Description</Text>
@@ -123,15 +217,10 @@ export default function AddMaintenanceScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Due Date</Text>
-            <View style={styles.inputWithIcon}>
-              <Calendar size={20} color="#64748B" />
-              <TextInput
-                style={styles.iconInput}
-                value={dueDate}
-                onChangeText={setDueDate}
-                placeholder="MM/DD/YYYY"
-              />
-            </View>
+            <DatePicker
+              value={dueDate}
+              onChange={setDueDate}
+            />
           </View>
 
           <View style={styles.inputGroup}>
@@ -149,7 +238,7 @@ export default function AddMaintenanceScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Odometer Reading</Text>
+            <Text style={styles.label}>Current Mileage</Text>
             <View style={styles.inputWithIcon}>
               <Gauge size={20} color="#64748B" />
               <TextInput
@@ -157,7 +246,7 @@ export default function AddMaintenanceScreen() {
                 value={odometerReading}
                 onChangeText={setOdometerReading}
                 placeholder="Enter current mileage"
-                keyboardType="numeric"
+                keyboardType="number-pad"
               />
             </View>
           </View>
@@ -195,15 +284,19 @@ export default function AddMaintenanceScreen() {
           <TouchableOpacity 
             style={styles.cancelButton}
             onPress={() => router.back()}
+            disabled={saving}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={styles.saveButton}
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
             onPress={handleSave}
+            disabled={saving}
           >
-            <Text style={styles.saveButtonText}>Save Record</Text>
+            <Text style={styles.saveButtonText}>
+              {saving ? 'Saving...' : 'Save Record'}
+            </Text>
           </TouchableOpacity>
         </View>
 
@@ -255,7 +348,20 @@ const styles = StyleSheet.create({
     color: '#EF4444',
     textAlign: 'center',
   },
+  loadingText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
+    textAlign: 'center',
+    marginVertical: 12,
+  },
   equipmentSelector: {
+    backgroundColor: '#FFFFFF',
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+  },
+  maintenanceTypeSelector: {
     backgroundColor: '#FFFFFF',
     paddingVertical: 16,
     borderBottomWidth: 1,
@@ -301,6 +407,27 @@ const styles = StyleSheet.create({
   },
   equipmentTypeSelected: {
     color: '#94A3B8',
+  },
+  typeList: {
+    paddingHorizontal: 16,
+    gap: 8,
+  },
+  typeButton: {
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+  },
+  typeButtonSelected: {
+    backgroundColor: '#334155',
+  },
+  typeButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#64748B',
+  },
+  typeButtonTextSelected: {
+    color: '#FFFFFF',
   },
   form: {
     padding: 16,
@@ -367,6 +494,9 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: 8,
     alignItems: 'center',
+  },
+  saveButtonDisabled: {
+    opacity: 0.7,
   },
   saveButtonText: {
     fontSize: 16,

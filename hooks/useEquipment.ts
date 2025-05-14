@@ -4,8 +4,19 @@ import { Database } from '@/types/supabase';
 import { useAuth } from './useAuth';
 
 export type Equipment = Database['public']['Tables']['equipment']['Row'];
-export type NewEquipment = Database['public']['Tables']['equipment']['Insert'];
+export type NewEquipment = Omit<Database['public']['Tables']['equipment']['Insert'], 'user_id'>;
 export type EquipmentUpdate = Database['public']['Tables']['equipment']['Update'];
+
+// Default images for each equipment type
+const DEFAULT_IMAGES = {
+  'Vehicle': 'https://images.pexels.com/photos/170811/pexels-photo-170811.jpeg?auto=compress&cs=tinysrgb&w=800',
+  'Motorcycle': 'https://images.pexels.com/photos/2393821/pexels-photo-2393821.jpeg?auto=compress&cs=tinysrgb&w=800',
+  'Lawn & Garden': 'https://images.pexels.com/photos/589/garden-equipment-machine-lawn-mower.jpg?auto=compress&cs=tinysrgb&w=800',
+  'Construction': 'https://images.pexels.com/photos/2058128/pexels-photo-2058128.jpeg?auto=compress&cs=tinysrgb&w=800',
+  'Watercraft': 'https://images.pexels.com/photos/673031/pexels-photo-673031.jpeg?auto=compress&cs=tinysrgb&w=800',
+  'Recreational': 'https://images.pexels.com/photos/1178448/pexels-photo-1178448.jpeg?auto=compress&cs=tinysrgb&w=800',
+  'Other': 'https://images.pexels.com/photos/162553/keys-workshop-mechanic-tools-162553.jpeg?auto=compress&cs=tinysrgb&w=800',
+};
 
 export function useEquipment() {
   const { session } = useAuth();
@@ -17,6 +28,26 @@ export function useEquipment() {
     if (session) {
       fetchEquipment();
     }
+  }, [session]);
+
+  // Subscribe to changes
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel('equipment_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'equipment'
+      }, () => {
+        fetchEquipment();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
   }, [session]);
 
   const fetchEquipment = async () => {
@@ -43,23 +74,20 @@ export function useEquipment() {
     if (!session?.user.id) throw new Error('User not authenticated');
 
     try {
-      // First check if profile exists
       const { data: existingProfile, error: fetchError } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', session.user.id)
         .single();
 
-      if (fetchError && fetchError.code !== 'PGRST116') { // PGRST116 is "no rows returned"
+      if (fetchError && fetchError.code !== 'PGRST116') {
         throw fetchError;
       }
 
-      // If profile exists, return early
       if (existingProfile) {
-        return true;
+        return;
       }
 
-      // If profile doesn't exist, create it
       const { error: insertError } = await supabase
         .from('profiles')
         .insert({
@@ -72,115 +100,108 @@ export function useEquipment() {
       if (insertError) {
         throw insertError;
       }
-
-      return true;
     } catch (err) {
       console.error('Error ensuring user profile:', err);
       throw err;
     }
   };
 
-  const addEquipment = async (newEquipment: Omit<NewEquipment, 'user_id'>) => {
+  const uploadImage = async (file: File): Promise<string> => {
+    try {
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${Math.random()}.${fileExt}`;
+      const filePath = `${session?.user.id}/${fileName}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from('equipment-images')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('equipment-images')
+        .getPublicUrl(filePath);
+
+      return publicUrl;
+    } catch (err) {
+      throw new Error('Failed to upload image');
+    }
+  };
+
+  const addEquipment = async (newEquipment: NewEquipment & { imageFile?: File }) => {
     if (!session?.user.id) throw new Error('User not authenticated');
-
-    // Create optimistic equipment entry
-    const optimisticEquipment: Equipment = {
-      id: crypto.randomUUID(), // Temporary ID
-      user_id: session.user.id,
-      image_url: 'https://images.pexels.com/photos/2533092/pexels-photo-2533092.jpeg?auto=compress&cs=tinysrgb&w=800',
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      ...newEquipment,
-    };
-
-    // Add optimistic entry to state
-    setEquipment(prev => [optimisticEquipment, ...prev]);
 
     try {
       setError(null);
-
-      // Ensure user profile exists before adding equipment
       await ensureUserProfile();
+
+      let imageUrl = DEFAULT_IMAGES[newEquipment.type as keyof typeof DEFAULT_IMAGES] || DEFAULT_IMAGES.Other;
+
+      if (newEquipment.imageFile) {
+        imageUrl = await uploadImage(newEquipment.imageFile);
+      }
+
+      // Remove imageFile from the equipment data before inserting
+      const { imageFile, ...equipmentData } = newEquipment;
 
       const { data, error: insertError } = await supabase
         .from('equipment')
         .insert([{
-          ...newEquipment,
+          ...equipmentData,
           user_id: session.user.id,
-          image_url: optimisticEquipment.image_url,
+          image_url: imageUrl,
         }])
         .select()
         .single();
 
       if (insertError) throw insertError;
 
-      // Replace optimistic entry with real data
-      setEquipment(prev => 
-        prev.map(item => 
-          item.id === optimisticEquipment.id ? data! : item
-        )
-      );
+      // Update local state optimistically
+      setEquipment(prev => [data!, ...prev]);
 
       return data!;
     } catch (err) {
-      // Remove optimistic entry on error
-      setEquipment(prev => 
-        prev.filter(item => item.id !== optimisticEquipment.id)
-      );
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
   };
 
-  const updateEquipment = async (id: string, updates: EquipmentUpdate) => {
-    // Store original equipment for rollback
-    const originalEquipment = equipment.find(item => item.id === id);
-    if (!originalEquipment) throw new Error('Equipment not found');
-
-    // Apply optimistic update
-    setEquipment(prev => 
-      prev.map(item => 
-        item.id === id 
-          ? { ...item, ...updates, updated_at: new Date().toISOString() }
-          : item
-      )
-    );
-
+  const updateEquipment = async (id: string, updates: EquipmentUpdate & { imageFile?: File }) => {
     try {
       setError(null);
 
+      let imageUrl;
+      if (updates.imageFile) {
+        imageUrl = await uploadImage(updates.imageFile);
+        updates.image_url = imageUrl;
+      }
+
+      // Remove imageFile from updates before sending to database
+      const { imageFile, ...updateData } = updates;
+
       const { data, error: updateError } = await supabase
         .from('equipment')
-        .update(updates)
+        .update({
+          ...updateData,
+          updated_at: new Date().toISOString(),
+        })
         .eq('id', id)
         .select()
         .single();
 
       if (updateError) throw updateError;
 
-      // Update with actual server data
+      // Update local state optimistically
       setEquipment(prev => prev.map(item => item.id === id ? data! : item));
+
       return data!;
     } catch (err) {
-      // Rollback on error
-      setEquipment(prev => 
-        prev.map(item => 
-          item.id === id ? originalEquipment : item
-        )
-      );
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
   };
 
   const deleteEquipment = async (id: string) => {
-    // Store equipment for potential rollback
-    const deletedEquipment = equipment.find(item => item.id === id);
-    if (!deletedEquipment) throw new Error('Equipment not found');
-
-    // Optimistically remove equipment
-    setEquipment(prev => prev.filter(item => item.id !== id));
-
     try {
       setError(null);
 
@@ -190,9 +211,10 @@ export function useEquipment() {
         .eq('id', id);
 
       if (deleteError) throw deleteError;
+
+      // Update local state optimistically
+      setEquipment(prev => prev.filter(item => item.id !== id));
     } catch (err) {
-      // Restore equipment on error
-      setEquipment(prev => [...prev, deletedEquipment]);
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
@@ -206,5 +228,6 @@ export function useEquipment() {
     updateEquipment,
     deleteEquipment,
     refresh: fetchEquipment,
+    defaultImages: DEFAULT_IMAGES,
   };
 }

@@ -1,196 +1,161 @@
 # Equipment Manager
 
-A comprehensive equipment management solution for individuals and businesses to track, maintain, and optimize their vehicle and equipment fleet.
+A comprehensive equipment management solution for tracking maintenance, costs, and optimizing fleet operations. Built with React Native and Expo.
 
-[View Live Demo](https://equipment-manager.netlify.app)
+[View Live Demo](https://cloudify-equipment-manager.netlify.app)
 
-## Product Vision
+## 🤖 AI-Generated Application
 
-Equipment Manager empowers users to take control of their equipment maintenance and costs through an intuitive, mobile-first platform. Our vision is to:
+This application is a prototype generated using artificial intelligence. It demonstrates the capabilities of AI in creating modern, production-ready applications while following best practices and industry standards.
 
-- Reduce equipment downtime through proactive maintenance scheduling
-- Optimize equipment lifecycle costs with detailed expense tracking
-- Improve equipment longevity with comprehensive maintenance history
-- Enhance decision-making with data-driven insights
-- Simplify equipment management for both individuals and businesses
+### Current Development Status
 
-## User Personas
+The application is currently in active development with the following features implemented:
 
-### 1. Small Business Owner - Mike
-- Owns a landscaping company with 10+ pieces of equipment
-- Needs to track maintenance schedules and costs
-- Wants to maximize equipment uptime
-- Values cost control and efficiency
+✅ User Authentication
+- Email/password authentication
+- Persistent login
+- Profile management
 
-### 2. Car Enthusiast - Sarah
-- Owns multiple vehicles including classic cars
-- Meticulously tracks modifications and maintenance
-- Needs detailed service history records
-- Values organization and documentation
-
-### 3. Fleet Manager - David
-- Manages a fleet of 50+ vehicles
-- Requires comprehensive cost tracking
-- Needs maintenance scheduling and reminders
-- Values data-driven decision making
-
-### 4. Farm Owner - Lisa
-- Manages various agricultural equipment
-- Needs seasonal maintenance tracking
-- Wants to monitor operating costs
-- Values reliability and longevity
-
-## Epics
-
-### 1. Equipment Management
-- Equipment inventory tracking
+✅ Equipment Management
+- Add/edit/delete equipment
 - Equipment details and specifications
-- Status monitoring
-- Documentation storage
-- Upgrade and modification tracking
+- Status tracking
+- Image management
+- Vehicle information tracking
 
-### 2. Maintenance Management
-- Maintenance scheduling
-- Service history tracking
-- Maintenance reminders
+✅ Maintenance Tracking
+- Schedule maintenance tasks
+- Track service history
+- Record maintenance costs
 - Service provider management
-- Work order creation
 
-### 3. Cost Tracking
-- Expense recording
-- Cost categorization
-- Budget tracking
-- Cost analysis
-- Receipt management
+✅ Cost Management
+- Record and categorize expenses
+- Track maintenance costs
+- Monitor fuel expenses
+- Expense history
 
-### 4. Reporting & Analytics
-- Cost reports
-- Maintenance analytics
-- Equipment utilization metrics
-- ROI calculations
-- Export capabilities
+🚧 In Progress
+- Equipment reports and analytics
+- Cost analysis and reporting
+- Data export capabilities
+- Advanced search and filtering
 
-## Features
+## 🚀 Features
 
 ### Equipment Management
-- [x] Add and edit equipment details
-- [x] Track equipment status
-- [x] Store equipment photos
-- [x] Record equipment specifications
-- [x] Track modifications and upgrades
+- Track equipment details including name, type, year, and status
+- Store equipment photos with cloud storage
+- Record purchase information and specifications
+- Monitor equipment status and condition
+- Manage vehicle-specific information (VIN, license plate)
 
 ### Maintenance Management
-- [x] Schedule maintenance tasks
-- [x] Record service history
-- [x] Set maintenance reminders
-- [x] Track service providers
-- [x] Monitor maintenance costs
+- Schedule and track maintenance tasks
+- Record service history and costs
+- Set maintenance reminders
+- Track service providers
+- Monitor maintenance expenses
 
 ### Cost Tracking
-- [x] Record expenses
-- [x] Categorize costs
-- [x] Track total cost of ownership
-- [x] Store receipts
-- [x] Monitor cost trends
+- Record and categorize expenses
+- Track maintenance and repair costs
+- Monitor fuel expenses
+- Store expense details and notes
+- View cost history and trends
 
-### Reporting
-- [ ] Generate cost reports
-- [ ] View maintenance history
-- [ ] Analyze equipment performance
-- [ ] Export data
-- [ ] Create custom reports
+## 🛠 Technology Stack
 
-## User Stories
-
-### Equipment Management
-```
-As a fleet manager
-I want to add new equipment to the system
-So that I can track its maintenance and costs
-
-As a car enthusiast
-I want to record equipment modifications
-So that I can track upgrades and their impact
-
-As a business owner
-I want to monitor equipment status
-So that I can ensure optimal operation
-```
-
-### Maintenance Management
-```
-As a fleet manager
-I want to schedule maintenance tasks
-So that I can prevent equipment breakdowns
-
-As a farm owner
-I want to receive maintenance reminders
-So that I don't miss important service intervals
-
-As a mechanic
-I want to record service details
-So that I can maintain accurate service history
-```
-
-### Cost Tracking
-```
-As a business owner
-I want to track all equipment-related expenses
-So that I can monitor and control costs
-
-As a fleet manager
-I want to categorize expenses
-So that I can analyze costs by type
-
-As an accountant
-I want to store receipt images
-So that I can maintain proper documentation
-```
-
-### Reporting
-```
-As a business owner
-I want to generate cost reports
-So that I can make informed decisions
-
-As a fleet manager
-I want to analyze maintenance history
-So that I can optimize service schedules
-
-As an accountant
-I want to export expense data
-So that I can use it in our accounting system
-```
-
-## Technical Stack
-
+### Frontend
 - React Native with Expo
-- Expo Router for navigation
 - TypeScript for type safety
-- Custom components for UI
-- Local storage for data persistence
+- Expo Router for navigation
+- Lucide Icons for UI elements
+- Custom components for consistent design
 
-## Getting Started
+### Backend
+- Supabase for backend services
+- PostgreSQL database
+- Row Level Security (RLS) for data protection
+- Real-time subscriptions
+- Cloud storage for images
 
-1. Clone the repository
+### Authentication
+- Supabase Auth
+- Secure email/password authentication
+- Session management
+- Protected routes
+
+## 📱 Platform Support
+
+The application is built with web-first support while maintaining compatibility with native platforms:
+
+- ✅ Web (Primary Platform)
+- ✅ iOS (Compatible)
+- ✅ Android (Compatible)
+
+## 🏗 Project Structure
+
+```
+equipment-manager/
+├── app/                   # Application routes
+│   ├── (tabs)/           # Tab-based navigation
+│   ├── auth/             # Authentication screens
+│   └── _layout.tsx       # Root layout configuration
+├── components/           # Reusable components
+├── hooks/               # Custom React hooks
+├── lib/                 # Utility functions and configurations
+├── types/              # TypeScript type definitions
+└── supabase/           # Database migrations and configuration
+```
+
+## 🔒 Security Features
+
+- Row Level Security (RLS) policies for data protection
+- Secure authentication flow
+- Protected API routes
+- Environment variable management
+- Secure image upload and storage
+
+## 🚀 Getting Started
+
+1. Clone the repository:
+```bash
+git clone https://github.com/yourusername/equipment-manager.git
+```
+
 2. Install dependencies:
 ```bash
 npm install
 ```
 
-3. Start the development server:
+3. Set up environment variables:
+```bash
+cp .env.example .env
+```
+
+4. Start the development server:
 ```bash
 npm run dev
 ```
 
-## Contributing
+## 📦 Deployment
 
-1. Fork the repository
-2. Create a feature branch
-3. Commit your changes
-4. Push to the branch
-5. Create a Pull Request
+The application is deployed on Netlify with automatic deployments from the main branch. Each push triggers a new deployment with:
 
-## License
+- Automatic build process
+- Environment variable management
+- Preview deployments for pull requests
+- Custom domain support
 
-This project is licensed under the MIT License - see the LICENSE file for details.
+## 📄 License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## 🙏 Acknowledgments
+
+- Built with [Expo](https://expo.dev/)
+- Backend powered by [Supabase](https://supabase.com/)
+- Icons from [Lucide](https://lucide.dev/)
+- Fonts from [Google Fonts](https://fonts.google.com/)

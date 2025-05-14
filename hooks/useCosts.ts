@@ -19,6 +19,27 @@ export function useCosts(equipmentId?: string) {
     }
   }, [session, equipmentId]);
 
+  // Subscribe to changes
+  useEffect(() => {
+    if (!session) return;
+
+    const channel = supabase
+      .channel('costs_changes')
+      .on('postgres_changes', {
+        event: '*',
+        schema: 'public',
+        table: 'costs',
+        filter: equipmentId ? `equipment_id=eq.${equipmentId}` : undefined
+      }, () => {
+        fetchCosts();
+      })
+      .subscribe();
+
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [session, equipmentId]);
+
   const fetchCosts = async () => {
     try {
       setLoading(true);
@@ -48,17 +69,6 @@ export function useCosts(equipmentId?: string) {
   const addCost = async (newCost: NewCost) => {
     if (!session?.user.id) throw new Error('User not authenticated');
 
-    // Create optimistic cost
-    const optimisticCost: Cost = {
-      id: crypto.randomUUID(),
-      user_id: session.user.id,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-      ...newCost,
-    };
-
-    setCosts(prev => [optimisticCost, ...prev]);
-
     try {
       setError(null);
 
@@ -73,34 +83,17 @@ export function useCosts(equipmentId?: string) {
 
       if (insertError) throw insertError;
 
-      setCosts(prev => 
-        prev.map(cost => 
-          cost.id === optimisticCost.id ? data! : cost
-        )
-      );
+      // Update local state optimistically
+      setCosts(prev => [data!, ...prev]);
 
       return data!;
     } catch (err) {
-      setCosts(prev => 
-        prev.filter(cost => cost.id !== optimisticCost.id)
-      );
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
   };
 
   const updateCost = async (id: string, updates: CostUpdate) => {
-    const originalCost = costs.find(cost => cost.id === id);
-    if (!originalCost) throw new Error('Cost not found');
-
-    setCosts(prev => 
-      prev.map(cost => 
-        cost.id === id 
-          ? { ...cost, ...updates, updated_at: new Date().toISOString() }
-          : cost
-      )
-    );
-
     try {
       setError(null);
 
@@ -113,25 +106,17 @@ export function useCosts(equipmentId?: string) {
 
       if (updateError) throw updateError;
 
+      // Update local state optimistically
       setCosts(prev => prev.map(cost => cost.id === id ? data! : cost));
+
       return data!;
     } catch (err) {
-      setCosts(prev => 
-        prev.map(cost => 
-          cost.id === id ? originalCost : cost
-        )
-      );
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }
   };
 
   const deleteCost = async (id: string) => {
-    const deletedCost = costs.find(cost => cost.id === id);
-    if (!deletedCost) throw new Error('Cost not found');
-
-    setCosts(prev => prev.filter(cost => cost.id !== id));
-
     try {
       setError(null);
 
@@ -141,8 +126,10 @@ export function useCosts(equipmentId?: string) {
         .eq('id', id);
 
       if (deleteError) throw deleteError;
+
+      // Update local state optimistically
+      setCosts(prev => prev.filter(cost => cost.id !== id));
     } catch (err) {
-      setCosts(prev => [...prev, deletedCost]);
       setError(err instanceof Error ? err.message : 'An error occurred');
       throw err;
     }

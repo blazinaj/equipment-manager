@@ -1,28 +1,59 @@
-import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform, Image, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, Filter, Search } from 'lucide-react-native';
-import { useState } from 'react';
-import { EquipmentCard } from '@/components/EquipmentCard';
+import { Plus, Filter, Search, ChevronRight } from 'lucide-react-native';
+import { useState, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useEquipment } from '@/hooks/useEquipment';
 
+const EQUIPMENT_TYPES = [
+  'All',
+  'Vehicle',
+  'Motorcycle',
+  'Lawn & Garden',
+  'Construction',
+  'Watercraft',
+  'Recreational',
+  'Other'
+];
+
 export default function EquipmentScreen() {
   const router = useRouter();
-  const { equipment, loading, error } = useEquipment();
-  const [selectedCategory, setSelectedCategory] = useState('All');
+  const { equipment, loading, error, refresh } = useEquipment();
+  const [selectedType, setSelectedType] = useState('All');
+  const [refreshing, setRefreshing] = useState(false);
   
-  const categories = ['All', 'Vehicles', 'Motorcycles', 'Lawn & Garden', 'Equipment'];
-  
-  const filteredEquipment = selectedCategory === 'All' 
+  const filteredEquipment = selectedType === 'All' 
     ? equipment 
-    : equipment.filter(item => item.type === selectedCategory);
+    : equipment.filter(item => item.type === selectedType);
+
+  const onRefresh = useCallback(async () => {
+    setRefreshing(true);
+    try {
+      await refresh();
+    } finally {
+      setRefreshing(false);
+    }
+  }, [refresh]);
+
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case 'Good':
+        return '#DCFCE7';
+      case 'Fair':
+        return '#FEF9C3';
+      case 'Poor':
+        return '#FEE2E2';
+      default:
+        return '#F1F5F9';
+    }
+  };
   
   return (
     <SafeAreaView style={styles.safeArea}>
       <StatusBar style="dark" />
       <View style={styles.container}>
         <View style={styles.header}>
-          <Text style={styles.title}>My Equipment</Text>
+          <Text style={styles.title}>Equipment</Text>
           <TouchableOpacity 
             style={styles.addButton}
             onPress={() => router.push('/equipment/add')}
@@ -50,63 +81,103 @@ export default function EquipmentScreen() {
             showsHorizontalScrollIndicator={false} 
             contentContainerStyle={styles.categoriesScroll}
           >
-            {categories.map((category) => (
+            {EQUIPMENT_TYPES.map((type) => (
               <TouchableOpacity 
-                key={category}
+                key={type}
                 style={[
                   styles.categoryButton,
-                  selectedCategory === category && styles.categoryButtonActive
+                  selectedType === type && styles.categoryButtonActive
                 ]}
-                onPress={() => setSelectedCategory(category)}
+                onPress={() => setSelectedType(type)}
               >
                 <Text style={[
                   styles.categoryText,
-                  selectedCategory === category && styles.categoryTextActive
+                  selectedType === type && styles.categoryTextActive
                 ]}>
-                  {category}
+                  {type}
                 </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
         </View>
         
-        <ScrollView style={styles.equipmentList} showsVerticalScrollIndicator={false}>
+        <ScrollView 
+          style={styles.content} 
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              tintColor="#334155"
+              colors={['#334155']} // Android
+              progressBackgroundColor="#FFFFFF" // Android
+              style={{ backgroundColor: 'transparent' }} // iOS
+            />
+          }
+        >
           {error && (
             <View style={styles.errorMessage}>
               <Text style={styles.errorText}>{error}</Text>
             </View>
           )}
           
-          {loading ? (
+          {loading && !refreshing ? (
             <View style={styles.loadingState}>
               <Text style={styles.loadingText}>Loading equipment...</Text>
             </View>
-          ) : (
-            <>
-              <View style={styles.equipmentGrid}>
-                {filteredEquipment.map((item) => (
-                  <EquipmentCard 
-                    key={item.id}
-                    equipment={item}
-                    onPress={() => router.push(`/equipment/${item.id}`)}
+          ) : filteredEquipment.length > 0 ? (
+            <View style={styles.equipmentList}>
+              {filteredEquipment.map((item) => (
+                <TouchableOpacity
+                  key={item.id}
+                  style={styles.equipmentCard}
+                  onPress={() => router.push(`/equipment/${item.id}`)}
+                >
+                  <Image
+                    source={{ uri: item.image_url }}
+                    style={styles.equipmentImage}
+                    resizeMode="cover"
                   />
-                ))}
-              </View>
-              
-              {filteredEquipment.length === 0 && (
-                <View style={styles.emptyState}>
-                  <Text style={styles.emptyStateText}>
-                    No equipment found in this category
-                  </Text>
-                  <TouchableOpacity 
-                    style={styles.emptyStateButton}
-                    onPress={() => setSelectedCategory('All')}
-                  >
-                    <Text style={styles.emptyStateButtonText}>Show All Equipment</Text>
-                  </TouchableOpacity>
-                </View>
+                  <View style={styles.equipmentContent}>
+                    <View style={styles.equipmentHeader}>
+                      <Text style={styles.equipmentName}>{item.name}</Text>
+                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                        <Text style={styles.statusText}>{item.status}</Text>
+                      </View>
+                    </View>
+                    <Text style={styles.equipmentType}>{item.type} • {item.year}</Text>
+                    <View style={styles.equipmentFooter}>
+                      <Text style={styles.equipmentPrice}>${item.purchase_price.toLocaleString()}</Text>
+                      <ChevronRight size={20} color="#94A3B8" />
+                    </View>
+                  </View>
+                </TouchableOpacity>
+              ))}
+            </View>
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyStateTitle}>No Equipment Found</Text>
+              <Text style={styles.emptyStateText}>
+                {selectedType === 'All' 
+                  ? 'Start by adding your first piece of equipment'
+                  : `No ${selectedType} equipment found`}
+              </Text>
+              {selectedType === 'All' ? (
+                <TouchableOpacity 
+                  style={styles.emptyStateButton}
+                  onPress={() => router.push('/equipment/add')}
+                >
+                  <Text style={styles.emptyStateButtonText}>Add Equipment</Text>
+                </TouchableOpacity>
+              ) : (
+                <TouchableOpacity 
+                  style={styles.emptyStateButton}
+                  onPress={() => setSelectedType('All')}
+                >
+                  <Text style={styles.emptyStateButtonText}>Show All Equipment</Text>
+                </TouchableOpacity>
               )}
-            </>
+            </View>
           )}
           
           <View style={styles.emptySpace} />
@@ -213,13 +284,69 @@ const styles = StyleSheet.create({
   categoryTextActive: {
     color: '#FFFFFF',
   },
-  equipmentList: {
+  content: {
     flex: 1,
   },
-  equipmentGrid: {
+  equipmentList: {
+    paddingHorizontal: 16,
+  },
+  equipmentCard: {
+    backgroundColor: '#FFFFFF',
+    borderRadius: 12,
+    marginBottom: 16,
+    overflow: 'hidden',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  equipmentImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#F1F5F9',
+  },
+  equipmentContent: {
+    padding: 16,
+  },
+  equipmentHeader: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
+  equipmentName: {
+    flex: 1,
+    fontSize: 18,
+    fontFamily: 'Inter-Bold',
+    color: '#334155',
+    marginRight: 8,
+  },
+  statusBadge: {
     paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+  },
+  statusText: {
+    fontSize: 12,
+    fontFamily: 'Inter-Medium',
+    color: '#334155',
+  },
+  equipmentType: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
+    marginBottom: 12,
+  },
+  equipmentFooter: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  equipmentPrice: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#334155',
   },
   errorMessage: {
     backgroundColor: '#FEE2E2',
@@ -247,23 +374,29 @@ const styles = StyleSheet.create({
     padding: 24,
     alignItems: 'center',
   },
+  emptyStateTitle: {
+    fontSize: 20,
+    fontFamily: 'Inter-Bold',
+    color: '#334155',
+    marginBottom: 8,
+  },
   emptyStateText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#64748B',
     textAlign: 'center',
-    marginBottom: 12,
+    marginBottom: 16,
   },
   emptyStateButton: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
+    backgroundColor: '#334155',
+    paddingHorizontal: 20,
+    paddingVertical: 12,
     borderRadius: 8,
   },
   emptyStateButtonText: {
-    fontSize: 14,
+    fontSize: 16,
     fontFamily: 'Inter-Medium',
-    color: '#334155',
+    color: '#FFFFFF',
   },
   emptySpace: {
     height: 100,

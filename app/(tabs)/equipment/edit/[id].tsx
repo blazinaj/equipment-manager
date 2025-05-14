@@ -1,28 +1,61 @@
-import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Image } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Calendar, DollarSign, Truck, FileText } from 'lucide-react-native';
-import { useState } from 'react';
+import { ArrowLeft, DollarSign, Truck, FileText, Camera } from 'lucide-react-native';
+import { useEffect, useState } from 'react';
 import { useEquipment } from '@/hooks/useEquipment';
+import { DatePicker } from '@/components/DatePicker';
+import { YearPicker } from '@/components/YearPicker';
+
+const EQUIPMENT_TYPES = [
+  'Vehicle',
+  'Motorcycle',
+  'Lawn & Garden',
+  'Construction',
+  'Watercraft',
+  'Recreational',
+  'Other'
+];
 
 export default function EditEquipmentScreen() {
   const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { equipment, loading, error: equipmentError, updateEquipment } = useEquipment();
-  
+  const { equipment, loading, error: equipmentError, updateEquipment, defaultImages } = useEquipment();
   const currentEquipment = equipment.find(item => item.id === id);
 
-  const [name, setName] = useState(currentEquipment?.name || '');
-  const [type, setType] = useState(currentEquipment?.type || '');
-  const [year, setYear] = useState(currentEquipment?.year.toString() || '');
-  const [status, setStatus] = useState<'Good' | 'Fair' | 'Poor'>(currentEquipment?.status || 'Good');
-  const [purchaseDate, setPurchaseDate] = useState(currentEquipment?.purchase_date || '');
-  const [purchasePrice, setPurchasePrice] = useState(currentEquipment?.purchase_price.toString() || '');
-  const [vinNumber, setVinNumber] = useState(currentEquipment?.vin_number || '');
-  const [licensePlate, setLicensePlate] = useState(currentEquipment?.license_plate || '');
-  const [notes, setNotes] = useState(currentEquipment?.notes || '');
+  const [name, setName] = useState('');
+  const [type, setType] = useState<keyof typeof defaultImages>('Vehicle');
+  const [year, setYear] = useState('');
+  const [status, setStatus] = useState<'Good' | 'Fair' | 'Poor'>('Good');
+  const [purchaseDate, setPurchaseDate] = useState('');
+  const [purchasePrice, setPurchasePrice] = useState('');
+  const [vinNumber, setVinNumber] = useState('');
+  const [licensePlate, setLicensePlate] = useState('');
+  const [notes, setNotes] = useState('');
+  const [imageFile, setImageFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    if (currentEquipment) {
+      setName(currentEquipment.name);
+      setType(currentEquipment.type as keyof typeof defaultImages);
+      setYear(currentEquipment.year?.toString() || '');
+      setStatus(currentEquipment.status);
+      setPurchaseDate(currentEquipment.purchase_date || '');
+      setPurchasePrice(currentEquipment.purchase_price?.toString() || '');
+      setVinNumber(currentEquipment.vin_number || '');
+      setLicensePlate(currentEquipment.license_plate || '');
+      setNotes(currentEquipment.notes || '');
+    }
+  }, [currentEquipment]);
+
+  const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setImageFile(file);
+    }
+  };
 
   if (loading) {
     return (
@@ -77,18 +110,33 @@ export default function EditEquipmentScreen() {
     try {
       setSaving(true);
       setError(null);
-
-      await updateEquipment(currentEquipment.id, {
+      
+      const updates: any = {
         name,
         type,
-        year: parseInt(year),
         status,
-        purchase_date: purchaseDate,
-        purchase_price: parseFloat(purchasePrice),
         vin_number: vinNumber || null,
         license_plate: licensePlate || null,
         notes: notes || null,
-      });
+      };
+      
+      if (year) {
+        updates.year = parseInt(year);
+      }
+      
+      if (purchaseDate) {
+        updates.purchase_date = purchaseDate;
+      }
+      
+      if (purchasePrice) {
+        updates.purchase_price = parseFloat(purchasePrice);
+      }
+
+      if (imageFile) {
+        updates.imageFile = imageFile;
+      }
+
+      await updateEquipment(currentEquipment.id, updates);
 
       router.back();
     } catch (err) {
@@ -119,6 +167,30 @@ export default function EditEquipmentScreen() {
           </View>
         )}
 
+        <View style={styles.imageSection}>
+          <Image
+            source={{ uri: imageFile ? URL.createObjectURL(imageFile) : currentEquipment.image_url || defaultImages[type] }}
+            style={styles.previewImage}
+            resizeMode="cover"
+          />
+          <TouchableOpacity 
+            style={styles.uploadButton}
+            onPress={() => document.getElementById('image-input')?.click()}
+          >
+            <Camera size={20} color="#334155" />
+            <Text style={styles.uploadButtonText}>
+              {imageFile ? 'Change Image' : 'Change Image'}
+            </Text>
+          </TouchableOpacity>
+          <input
+            id="image-input"
+            type="file"
+            accept="image/*"
+            onChange={handleImageSelect}
+            style={{ display: 'none' }}
+          />
+        </View>
+
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Name</Text>
@@ -135,22 +207,40 @@ export default function EditEquipmentScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Type</Text>
-            <TextInput
-              style={styles.input}
-              value={type}
-              onChangeText={setType}
-              placeholder="Enter equipment type"
-            />
+            <ScrollView 
+              horizontal 
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.typeList}
+            >
+              {EQUIPMENT_TYPES.map((equipmentType) => (
+                <TouchableOpacity
+                  key={equipmentType}
+                  style={[
+                    styles.typeButton,
+                    type === equipmentType && styles.typeButtonSelected
+                  ]}
+                  onPress={() => setType(equipmentType as keyof typeof defaultImages)}
+                >
+                  <Text 
+                    style={[
+                      styles.typeButtonText,
+                      type === equipmentType && styles.typeButtonTextSelected
+                    ]}
+                  >
+                    {equipmentType}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
           </View>
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Year</Text>
-            <TextInput
-              style={styles.input}
+            <YearPicker
               value={year}
-              onChangeText={setYear}
-              placeholder="Enter year"
-              keyboardType="numeric"
+              onChange={setYear}
+              minYear={1900}
+              maxYear={new Date().getFullYear()}
             />
           </View>
 
@@ -201,15 +291,10 @@ export default function EditEquipmentScreen() {
 
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Purchase Date</Text>
-            <View style={styles.inputWithIcon}>
-              <Calendar size={20} color="#64748B" />
-              <TextInput
-                style={styles.iconInput}
-                value={purchaseDate}
-                onChangeText={setPurchaseDate}
-                placeholder="YYYY-MM-DD"
-              />
-            </View>
+            <DatePicker
+              value={purchaseDate}
+              onChange={setPurchaseDate}
+            />
           </View>
 
           <View style={styles.inputGroup}>
@@ -266,6 +351,7 @@ export default function EditEquipmentScreen() {
           <TouchableOpacity 
             style={styles.cancelButton}
             onPress={() => router.back()}
+            disabled={saving}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
@@ -359,6 +445,31 @@ const styles = StyleSheet.create({
     margin: 16,
     borderRadius: 8,
   },
+  imageSection: {
+    marginBottom: 24,
+    alignItems: 'center',
+  },
+  previewImage: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 12,
+    marginBottom: 12,
+  },
+  uploadButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 8,
+  },
+  uploadButtonText: {
+    marginLeft: 8,
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#334155',
+  },
   form: {
     padding: 16,
   },
@@ -400,6 +511,28 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#334155',
+  },
+  typeList: {
+    paddingVertical: 4,
+    gap: 8,
+  },
+  typeButton: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    marginRight: 8,
+  },
+  typeButtonSelected: {
+    backgroundColor: '#334155',
+  },
+  typeButtonText: {
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#64748B',
+  },
+  typeButtonTextSelected: {
+    color: '#FFFFFF',
   },
   statusButtons: {
     flexDirection: 'row',
