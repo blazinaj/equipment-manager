@@ -1,5 +1,9 @@
 import { Tabs } from 'expo-router';
-import { LayoutGrid, Wrench, Receipt, Settings } from 'lucide-react-native';
+import { Grid2x2 as Grid, Wrench, Receipt, Settings } from 'lucide-react-native';
+import { Platform, Dimensions } from 'react-native';
+
+const ICON_SIZE = 24;
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
 
 export default function TabLayout() {
   return (
@@ -8,28 +12,40 @@ export default function TabLayout() {
         tabBarActiveTintColor: '#334155',
         tabBarInactiveTintColor: '#94A3B8',
         tabBarLabelStyle: {
-          fontSize: 12,
+          fontSize: 11,
           fontFamily: 'Inter-Medium',
+          marginTop: Platform.OS === 'ios' ? 0 : 4,
         },
         tabBarStyle: {
           backgroundColor: '#FFFFFF',
           borderTopWidth: 1,
           borderTopColor: '#E2E8F0',
-          height: 60,
+          height: Platform.OS === 'ios' ? 88 : 64,
+          paddingBottom: Platform.OS === 'ios' ? 28 : 8,
+          paddingTop: 8,
+          elevation: 8,
+          shadowColor: '#000000',
+          shadowOffset: {
+            width: 0,
+            height: -2,
+          },
+          shadowOpacity: 0.1,
+          shadowRadius: 3,
         },
         tabBarItemStyle: {
-          height: 60,
-          paddingTop: 6,
-          paddingBottom: 6,
+          height: Platform.OS === 'ios' ? 50 : 48,
+          width: SCREEN_WIDTH / 4,
+          padding: 0,
+          margin: 0,
         },
         headerShown: false,
       }}>
       <Tabs.Screen
         name="index"
         options={{
-          title: 'Equipment',
+          title: 'My Fleet',
           tabBarIcon: ({ color, size }) => (
-            <LayoutGrid size={size} color={color} />
+            <Grid size={ICON_SIZE} color={color} strokeWidth={1.5} />
           ),
           href: '/',
         }}
@@ -39,7 +55,7 @@ export default function TabLayout() {
         options={{
           title: 'Maintenance',
           tabBarIcon: ({ color, size }) => (
-            <Wrench size={size} color={color} />
+            <Wrench size={ICON_SIZE} color={color} strokeWidth={1.5} />
           ),
           href: '/maintenance',
         }}
@@ -49,7 +65,7 @@ export default function TabLayout() {
         options={{
           title: 'Costs',
           tabBarIcon: ({ color, size }) => (
-            <Receipt size={size} color={color} />
+            <Receipt size={ICON_SIZE} color={color} strokeWidth={1.5} />
           ),
           href: '/costs',
         }}
@@ -59,7 +75,7 @@ export default function TabLayout() {
         options={{
           title: 'Settings',
           tabBarIcon: ({ color, size }) => (
-            <Settings size={size} color={color} />
+            <Settings size={ICON_SIZE} color={color} strokeWidth={1.5} />
           ),
           href: '/settings',
         }}
@@ -128,6 +144,18 @@ export default function TabLayout() {
       />
       <Tabs.Screen
         name="equipment/[id]/upgrades/add"
+        options={{
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="equipment/[id]/repairs/[repairId]"
+        options={{
+          tabBarButton: () => null,
+        }}
+      />
+      <Tabs.Screen
+        name="equipment/[id]/repairs/add"
         options={{
           tabBarButton: () => null,
         }}

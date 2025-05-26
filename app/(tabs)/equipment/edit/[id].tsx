@@ -26,6 +26,9 @@ export default function EditEquipmentScreen() {
   const [name, setName] = useState('');
   const [type, setType] = useState<keyof typeof defaultImages>('Vehicle');
   const [year, setYear] = useState('');
+  const [make, setMake] = useState('');
+  const [model, setModel] = useState('');
+  const [modelNumber, setModelNumber] = useState('');
   const [status, setStatus] = useState<'Good' | 'Fair' | 'Poor'>('Good');
   const [purchaseDate, setPurchaseDate] = useState('');
   const [purchasePrice, setPurchasePrice] = useState('');
@@ -41,6 +44,9 @@ export default function EditEquipmentScreen() {
       setName(currentEquipment.name);
       setType(currentEquipment.type as keyof typeof defaultImages);
       setYear(currentEquipment.year?.toString() || '');
+      setMake(currentEquipment.make || '');
+      setModel(currentEquipment.model || '');
+      setModelNumber(currentEquipment.model_number || '');
       setStatus(currentEquipment.status);
       setPurchaseDate(currentEquipment.purchase_date || '');
       setPurchasePrice(currentEquipment.purchase_price?.toString() || '');
@@ -114,6 +120,9 @@ export default function EditEquipmentScreen() {
       const updates: any = {
         name,
         type,
+        make: make || null,
+        model: model || null,
+        model_number: modelNumber || null,
         status,
         vin_number: vinNumber || null,
         license_plate: licensePlate || null,
@@ -203,6 +212,36 @@ export default function EditEquipmentScreen() {
                 placeholder="Enter equipment name"
               />
             </View>
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Make</Text>
+            <TextInput
+              style={styles.input}
+              value={make}
+              onChangeText={setMake}
+              placeholder="Enter make (e.g., Ford, John Deere)"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Model</Text>
+            <TextInput
+              style={styles.input}
+              value={model}
+              onChangeText={setModel}
+              placeholder="Enter model (e.g., F-150, X350)"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Model Number</Text>
+            <TextInput
+              style={styles.input}
+              value={modelNumber}
+              onChangeText={setModelNumber}
+              placeholder="Enter model number or serial number"
+            />
           </View>
 
           <View style={styles.inputGroup}>

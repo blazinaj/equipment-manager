@@ -1,12 +1,13 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, Switch, SafeAreaView, Platform } from 'react-native';
-import { User, Bell, Shield, CircleHelp as HelpCircle, ArrowUpRight, Trash2 } from 'lucide-react-native';
+import { User, Bell, Shield, CircleHelp as HelpCircle, ArrowUpRight, Trash2, Moon, Sun, Monitor } from 'lucide-react-native';
 import { useState } from 'react';
 import { StatusBar } from 'expo-status-bar';
+import { useTheme } from '@/hooks/useTheme';
 
 export default function SettingsScreen() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(true);
   const [remindersEnabled, setRemindersEnabled] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
+  const { theme, setTheme } = useTheme();
 
   return (
     <SafeAreaView style={styles.safeArea}>
@@ -62,17 +63,41 @@ export default function SettingsScreen() {
           
           <View style={styles.section}>
             <Text style={styles.sectionTitle}>Appearance</Text>
-            <View style={styles.settingRow}>
-              <View style={styles.settingInfo}>
-                <Text style={styles.settingLabel}>Dark Mode</Text>
+            <TouchableOpacity 
+              style={[styles.themeOption, theme === 'light' && styles.themeOptionSelected]}
+              onPress={() => setTheme('light')}
+            >
+              <View style={styles.themeOptionIcon}>
+                <Sun size={20} color={theme === 'light' ? '#0D9488' : '#64748B'} />
               </View>
-              <Switch
-                value={darkMode}
-                onValueChange={setDarkMode}
-                trackColor={{ false: '#E2E8F0', true: '#0D9488' }}
-                thumbColor={darkMode ? '#FFFFFF' : '#FFFFFF'}
-              />
-            </View>
+              <Text style={[styles.themeOptionText, theme === 'light' && styles.themeOptionTextSelected]}>
+                Light
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.themeOption, theme === 'dark' && styles.themeOptionSelected]}
+              onPress={() => setTheme('dark')}
+            >
+              <View style={styles.themeOptionIcon}>
+                <Moon size={20} color={theme === 'dark' ? '#0D9488' : '#64748B'} />
+              </View>
+              <Text style={[styles.themeOptionText, theme === 'dark' && styles.themeOptionTextSelected]}>
+                Dark
+              </Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={[styles.themeOption, theme === 'system' && styles.themeOptionSelected]}
+              onPress={() => setTheme('system')}
+            >
+              <View style={styles.themeOptionIcon}>
+                <Monitor size={20} color={theme === 'system' ? '#0D9488' : '#64748B'} />
+              </View>
+              <Text style={[styles.themeOptionText, theme === 'system' && styles.themeOptionTextSelected]}>
+                System
+              </Text>
+            </TouchableOpacity>
           </View>
           
           <View style={styles.section}>
@@ -231,8 +256,38 @@ const styles = StyleSheet.create({
   settingLabel: {
     marginLeft: 12,
     fontSize: 16,
-    fontFamily: 'Inter-Regular',
+    fontFamily: 'Inter-Medium',
     color: '#334155',
+  },
+  themeOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: 16,
+    borderRadius: 12,
+    marginBottom: 8,
+    backgroundColor: '#F1F5F9',
+  },
+  themeOptionSelected: {
+    backgroundColor: '#E6F7F5',
+    borderWidth: 1,
+    borderColor: '#0D9488',
+  },
+  themeOptionIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: 12,
+  },
+  themeOptionText: {
+    fontSize: 16,
+    fontFamily: 'Inter-Medium',
+    color: '#64748B',
+  },
+  themeOptionTextSelected: {
+    color: '#0D9488',
   },
   dangerButton: {
     flexDirection: 'row',

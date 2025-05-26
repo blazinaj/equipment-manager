@@ -1,14 +1,22 @@
-import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Platform, TextInput, Modal } from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, ScrollView, Image, TouchableOpacity, Platform, TextInput, Modal, Animated } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, Calendar, DollarSign, PenTool as Tool, Truck, FileText, Plus, X, Gauge, PenLine, Trash2, Receipt, Wrench } from 'lucide-react-native';
-import { useState } from 'react';
+import { ArrowLeft, Calendar, DollarSign, PenTool as Tool, Truck, FileText, CircleCheck as CheckCircle2, CircleAlert as AlertCircle, Clock, Gauge, PenLine, Trash2, Receipt, Wrench, ChevronRight, Plus, X } from 'lucide-react-native';
+import { useState, useRef } from 'react';
 import { MaintenanceItem } from '@/components/MaintenanceItem';
 import { CostItem } from '@/components/CostItem';
 import { UpgradeCard } from '@/components/UpgradeCard';
+import { RepairItem } from '@/components/RepairItem';
 import { useEquipment } from '@/hooks/useEquipment';
 import { useMaintenance } from '@/hooks/useMaintenance';
 import { useCosts } from '@/hooks/useCosts';
+import { useUpgrades } from '@/hooks/useUpgrades';
+import { useRepairs } from '@/hooks/useRepairs';
+
+const HEADER_MAX_HEIGHT = 240;
+const HEADER_MIN_HEIGHT = Platform.OS === 'ios' ? 90 : 70;
+const HEADER_SCROLL_DISTANCE = HEADER_MAX_HEIGHT - HEADER_MIN_HEIGHT;
 
 export default function EquipmentDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -16,9 +24,48 @@ export default function EquipmentDetailsScreen() {
   const { equipment, loading, error: equipmentError, deleteEquipment } = useEquipment();
   const { records: maintenanceRecords, loading: maintenanceLoading } = useMaintenance(id as string);
   const { costs, loading: costsLoading } = useCosts(id as string);
+  const { upgrades, loading: upgradesLoading } = useUpgrades(id as string);
+  const { repairs, loading: repairsLoading } = useRepairs(id as string);
+  const scrollY = useRef(new Animated.Value(0)).current;
   
   const currentEquipment = equipment.find(item => item.id === id);
-  
+
+  const headerHeight = scrollY.interpolate({
+    inputRange: [0, HEADER_SCROLL_DISTANCE],
+    outputRange: [HEADER_MAX_HEIGHT, HEADER_MIN_HEIGHT],
+    extrapolate: 'clamp',
+  });
+
+  const imageOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
+    outputRange: [1, 0.5, 0],
+    extrapolate: 'clamp',
+  });
+
+  const imageTranslate = scrollY.interpolate({
+    inputRange: [0, HEADER_SCROLL_DISTANCE],
+    outputRange: [0, -50],
+    extrapolate: 'clamp',
+  });
+
+  const titleScale = scrollY.interpolate({
+    inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
+    outputRange: [1, 0.8, 0.7],
+    extrapolate: 'clamp',
+  });
+
+  const titleTranslateY = scrollY.interpolate({
+    inputRange: [0, HEADER_SCROLL_DISTANCE],
+    outputRange: [0, -HEADER_SCROLL_DISTANCE + 20],
+    extrapolate: 'clamp',
+  });
+
+  const headerContentOpacity = scrollY.interpolate({
+    inputRange: [0, HEADER_SCROLL_DISTANCE / 2, HEADER_SCROLL_DISTANCE],
+    outputRange: [0, 0.5, 1],
+    extrapolate: 'clamp',
+  });
+
   const [isMaintenanceModalVisible, setMaintenanceModalVisible] = useState(false);
   const [isDeleteModalVisible, setDeleteModalVisible] = useState(false);
   const [title, setTitle] = useState('');
@@ -103,35 +150,80 @@ export default function EquipmentDetailsScreen() {
   return (
     <View style={styles.container}>
       <StatusBar style="light" />
-      
-      <View style={styles.header}>
+
+      <Animated.View style={[styles.header, { height: headerHeight }]}>
         <Image
           source={{ uri: currentEquipment.image_url || 'https://images.pexels.com/photos/2533092/pexels-photo-2533092.jpeg?auto=compress&cs=tinysrgb&w=800' }}
           style={styles.coverImage}
           resizeMode="cover"
         />
-        <View style={styles.headerOverlay} />
+        <Animated.View 
+          style={[
+            styles.headerOverlay,
+            {
+              opacity: imageOpacity,
+              transform: [{ translateY: imageTranslate }]
+            }
+          ]} 
+        />
+
         <TouchableOpacity 
           style={styles.backButton}
           onPress={() => router.back()}
         >
           <ArrowLeft size={24} color="#FFFFFF" />
         </TouchableOpacity>
+
         <TouchableOpacity 
           style={styles.editButton}
           onPress={() => router.push(`/equipment/edit/${currentEquipment.id}`)}
         >
           <PenLine size={24} color="#FFFFFF" />
         </TouchableOpacity>
+
         <TouchableOpacity 
           style={styles.deleteButton}
           onPress={() => setDeleteModalVisible(true)}
         >
           <Trash2 size={24} color="#FFFFFF" />
         </TouchableOpacity>
-      </View>
+
+        <Animated.View 
+          style={[
+            styles.collapsedHeader,
+            {
+              opacity: headerContentOpacity,
+              transform: [{ translateY: titleTranslateY }]
+            }
+          ]}
+        >
+          <View style={styles.collapsedContent}>
+            <Image
+              source={{ uri: currentEquipment.image_url || 'https://images.pexels.com/photos/2533092/pexels-photo-2533092.jpeg?auto=compress&cs=tinysrgb&w=800' }}
+              style={styles.collapsedImage}
+              resizeMode="cover"
+            />
+            <View style={styles.collapsedInfo}>
+              <Text style={styles.collapsedTitle} numberOfLines={1} ellipsizeMode="tail">
+                {currentEquipment.name}
+              </Text>
+              <Text style={styles.collapsedSubtitle} numberOfLines={1}>
+                {currentEquipment.type} • {currentEquipment.year}
+              </Text>
+            </View>
+            <ChevronRight size={20} color="#94A3B8" />
+          </View>
+        </Animated.View>
+      </Animated.View>
       
-      <ScrollView style={styles.content}>
+      <Animated.ScrollView
+        style={styles.content}
+        scrollEventThrottle={16}
+        onScroll={Animated.event(
+          [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+          { useNativeDriver: true }
+        )}
+      >
         <View style={styles.titleSection}>
           <Text style={styles.title}>{currentEquipment.name}</Text>
           <View style={[styles.statusBadge, 
@@ -148,6 +240,28 @@ export default function EquipmentDetailsScreen() {
         <Text style={styles.subtitle}>{currentEquipment.type} • {currentEquipment.year}</Text>
         
         <View style={styles.statsContainer}>
+          <View style={styles.statItem}>
+            <Tool size={20} color="#64748B" />
+            <View style={styles.statContent}>
+              <Text style={styles.statLabel}>Make & Model</Text>
+              <Text style={styles.statValue}>
+                {currentEquipment.make} {currentEquipment.model}
+              </Text>
+            </View>
+          </View>
+          
+          {currentEquipment.model_number && (
+            <View style={styles.statItem}>
+              <FileText size={20} color="#64748B" />
+              <View style={styles.statContent}>
+                <Text style={styles.statLabel}>Model Number</Text>
+                <Text style={styles.statValue}>
+                  {currentEquipment.model_number}
+                </Text>
+              </View>
+            </View>
+          )}
+
           <View style={styles.statItem}>
             <Calendar size={20} color="#64748B" />
             <View style={styles.statContent}>
@@ -232,6 +346,66 @@ export default function EquipmentDetailsScreen() {
           )}
         </View>
 
+        {/* Upgrades Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <Tool size={20} color="#64748B" />
+              <Text style={styles.sectionTitle}>Upgrades</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => router.push(`/equipment/${currentEquipment.id}/upgrades/add`)}
+            >
+              <Plus size={20} color="#334155" />
+            </TouchableOpacity>
+          </View>
+
+          {upgradesLoading ? (
+            <Text style={styles.loadingText}>Loading upgrades...</Text>
+          ) : upgrades.length > 0 ? (
+            upgrades.map((upgrade) => (
+              <UpgradeCard
+                key={upgrade.id}
+                upgrade={upgrade}
+                onPress={() => router.push(`/equipment/${currentEquipment.id}/upgrades/${upgrade.id}`)}
+              />
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No upgrades installed yet</Text>
+          )}
+        </View>
+
+        {/* Repairs Section */}
+        <View style={styles.section}>
+          <View style={styles.sectionHeader}>
+            <View style={styles.sectionTitleContainer}>
+              <Tool size={20} color="#64748B" />
+              <Text style={styles.sectionTitle}>Repairs</Text>
+            </View>
+            <TouchableOpacity 
+              style={styles.addButton}
+              onPress={() => router.push(`/equipment/${currentEquipment.id}/repairs/add`)}
+            >
+              <Plus size={20} color="#334155" />
+            </TouchableOpacity>
+          </View>
+
+          {repairsLoading ? (
+            <Text style={styles.loadingText}>Loading repairs...</Text>
+          ) : repairs.length > 0 ? (
+            repairs.map((repair) => (
+              <RepairItem
+                key={repair.id}
+                item={repair}
+                onPress={() => router.push(`/equipment/${currentEquipment.id}/repairs/${repair.id}`)}
+              />
+            ))
+          ) : (
+            <Text style={styles.emptyText}>No repairs recorded yet</Text>
+          )}
+        </View>
+
         {/* Costs Section */}
         <View style={styles.section}>
           <View style={styles.sectionHeader}>
@@ -263,7 +437,7 @@ export default function EquipmentDetailsScreen() {
         </View>
 
         <View style={styles.emptySpace} />
-      </ScrollView>
+      </Animated.ScrollView>
 
       <Modal
         visible={isDeleteModalVisible}
@@ -494,16 +668,63 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Medium',
   },
   header: {
-    height: 240,
+    height: HEADER_MAX_HEIGHT,
     width: '100%',
+    top: 0,
+    left: 0,
+    right: 0,
+    backgroundColor: '#FFFFFF',
+    overflow: 'hidden',
   },
   coverImage: {
     width: '100%',
     height: '100%',
+    position: 'absolute',
   },
   headerOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0, 0, 0, 0.3)',
+  },
+  collapsedHeader: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    height: HEADER_MIN_HEIGHT,
+    backgroundColor: '#FFFFFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#E2E8F0',
+    justifyContent: 'center',
+    paddingHorizontal: 12,
+    paddingTop: Platform.OS === 'ios' ? 40 : 20,
+  },
+  collapsedContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    paddingBottom: 8,
+  },
+  collapsedImage: {
+    width: 40,
+    height: 40,
+    borderRadius: 8,
+    marginRight: 12,
+    backgroundColor: '#F1F5F9',
+  },
+  collapsedInfo: {
+    flex: 1,
+    marginRight: 12,
+    justifyContent: 'center',
+  },
+  collapsedTitle: {
+    fontSize: 16,
+    fontFamily: 'Inter-Bold',
+    color: '#334155',
+    marginBottom: 2,
+  },
+  collapsedSubtitle: {
+    fontSize: 12,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
   },
   backButton: {
     position: 'absolute',
@@ -540,11 +761,8 @@ const styles = StyleSheet.create({
   },
   content: {
     flex: 1,
-    marginTop: -24,
-    borderTopLeftRadius: 24,
-    borderTopRightRadius: 24,
-    backgroundColor: '#F8FAFC',
     paddingTop: 24,
+    backgroundColor: '#F8FAFC',
   },
   titleSection: {
     flexDirection: 'row',
@@ -711,7 +929,7 @@ const styles = StyleSheet.create({
   deleteModalContent: {
     backgroundColor: '#FFFFFF',
     borderRadius: 16,
-    padding: 24,
+    padding:  24,
     width: '90%',
     maxWidth: 400,
   },
@@ -723,50 +941,49 @@ const styles = StyleSheet.create({
   deleteModalTitle: {
     fontSize: 20,
     fontFamily: 'Inter-Bold',
-    color: '#EF4444',
+    color: '#334155',
     marginLeft: 12,
   },
   deleteModalText: {
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#334155',
-    marginBottom: 16,
+    marginBottom: 12,
     lineHeight: 24,
   },
   deleteModalWarning: {
     fontSize: 14,
-    fontFamily: 'Inter-Medium',
+    fontFamily: 'Inter-Regular',
     color: '#EF4444',
     marginBottom: 24,
   },
   deleteModalActions: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     gap: 12,
   },
   cancelDeleteButton: {
-    flex: 1,
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
   },
   cancelDeleteButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#334155',
+    color: '#64748B',
   },
   confirmDeleteButton: {
-    flex: 1,
-    backgroundColor: '#EF4444',
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: '#EF4444',
   },
   confirmDeleteButtonDisabled: {
-    opacity: 0.7,
+    opacity: 0.5,
   },
   confirmDeleteButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
   },
@@ -776,18 +993,17 @@ const styles = StyleSheet.create({
     justifyContent: 'flex-end',
   },
   modalContent: {
-    backgroundColor: '#F8FAFC',
+    backgroundColor: '#FFFFFF',
     borderTopLeftRadius: 24,
     borderTopRightRadius: 24,
-    height: '90%',
+    padding: 24,
+    maxHeight: '90%',
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E2E8F0',
+    marginBottom: 24,
   },
   modalTitle: {
     fontSize: 20,
@@ -797,23 +1013,24 @@ const styles = StyleSheet.create({
   closeButton: {
     width: 40,
     height: 40,
+    borderRadius: 20,
+    backgroundColor: '#F1F5F9',
     justifyContent: 'center',
     alignItems: 'center',
   },
   errorMessage: {
     backgroundColor: '#FEE2E2',
-    padding: 16,
-    margin: 16,
+    padding: 12,
     borderRadius: 8,
+    marginBottom: 16,
   },
   errorMessageText: {
-    color: '#EF4444',
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    textAlign: 'center',
+    color: '#EF4444',
   },
   modalForm: {
-    padding: 16,
+    marginBottom: 24,
   },
   inputGroup: {
     marginBottom: 16,
@@ -821,13 +1038,11 @@ const styles = StyleSheet.create({
   label: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#334155',
+    color: '#64748B',
     marginBottom: 8,
   },
   input: {
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
     borderRadius: 8,
     padding: 12,
     fontSize: 16,
@@ -835,53 +1050,47 @@ const styles = StyleSheet.create({
     color: '#334155',
   },
   textArea: {
-    height: 100,
+    minHeight: 100,
     textAlignVertical: 'top',
   },
   inputWithIcon: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderWidth: 1,
-    borderColor: '#E2E8F0',
+    backgroundColor: '#F8FAFC',
     borderRadius: 8,
-    paddingHorizontal: 12,
+    padding: 12,
   },
   iconInput: {
     flex: 1,
-    padding: 12,
+    marginLeft: 8,
     fontSize: 16,
     fontFamily: 'Inter-Regular',
     color: '#334155',
   },
   modalActions: {
     flexDirection: 'row',
+    justifyContent: 'flex-end',
     gap: 12,
-    padding: 16,
-    borderTopWidth: 1,
-    borderTopColor: '#E2E8F0',
   },
   cancelButton: {
-    flex: 1,
-    backgroundColor: '#F1F5F9',
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: '#F1F5F9',
   },
   cancelButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Medium',
-    color: '#334155',
+    color: '#64748B',
   },
   saveButton: {
-    flex: 1,
-    backgroundColor: '#10B981',
-    paddingVertical: 12,
+    paddingHorizontal: 16,
+    paddingVertical: 8,
     borderRadius: 8,
-    alignItems: 'center',
+    backgroundColor: '#334155',
   },
   saveButtonText: {
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#FFFFFF',
   },

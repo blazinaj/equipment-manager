@@ -2,16 +2,7 @@ import { View, Text, StyleSheet, TouchableOpacity, Image } from 'react-native';
 import { CalendarClock, Wrench, Car, Bike, Scissors, Truck, Bot as Boat, Tent, PenTool as Tool } from 'lucide-react-native';
 import { Equipment } from '@/hooks/useEquipment';
 
-const DEFAULT_COLORS = {
-  'Vehicle': '#E2E8F0',
-  'Motorcycle': '#FEE2E2',
-  'Lawn & Garden': '#DCFCE7',
-  'Construction': '#FEF9C3',
-  'Watercraft': '#DBEAFE',
-  'Recreational': '#F3E8FF',
-  'Other': '#F1F5F9',
-};
-interface EquipmentCardProps {
+interface EquipmentListItemProps {
   equipment: Equipment;
   onPress: () => void;
 }
@@ -19,28 +10,26 @@ interface EquipmentCardProps {
 const getEquipmentIcon = (type: string) => {
   switch (type) {
     case 'Vehicle':
-      return <Car size={32} color="#64748B" />;
+      return <Car size={24} color="#64748B" />;
     case 'Motorcycle':
-      return <Bike size={32} color="#64748B" />;
+      return <Bike size={24} color="#64748B" />;
     case 'Lawn & Garden':
-      return <Scissors size={32} color="#64748B" />;
+      return <Scissors size={24} color="#64748B" />;
     case 'Construction':
-      return <Truck size={32} color="#64748B" />;
+      return <Truck size={24} color="#64748B" />;
     case 'Watercraft':
-      return <Boat size={32} color="#64748B" />;
+      return <Boat size={24} color="#64748B" />;
     case 'Recreational':
-      return <Tent size={32} color="#64748B" />;
+      return <Tent size={24} color="#64748B" />;
     default:
-      return <Tool size={32} color="#64748B" />;
+      return <Tool size={24} color="#64748B" />;
   }
 };
 
-export function EquipmentCard({ equipment, onPress }: EquipmentCardProps) {
-  const backgroundColor = DEFAULT_COLORS[equipment.type as keyof typeof DEFAULT_COLORS] || DEFAULT_COLORS.Other;
-
+export function EquipmentListItem({ equipment, onPress }: EquipmentListItemProps) {
   return (
-    <TouchableOpacity style={styles.card} onPress={onPress}>
-      <View style={[styles.imageContainer, { backgroundColor }]}>
+    <TouchableOpacity style={styles.container} onPress={onPress}>
+      <View style={styles.imageContainer}>
         {equipment.image_url ? (
           <Image
             source={{ uri: equipment.image_url }}
@@ -53,9 +42,13 @@ export function EquipmentCard({ equipment, onPress }: EquipmentCardProps) {
           </View>
         )}
       </View>
+
       <View style={styles.content}>
-        <View style={styles.topRow}>
-          <Text style={styles.title} numberOfLines={1}>{equipment.name}</Text>
+        <View style={styles.header}>
+          <View style={styles.titleSection}>
+            <Text style={styles.title} numberOfLines={1}>{equipment.name}</Text>
+            <Text style={styles.subtitle}>{equipment.type} • {equipment.year}</Text>
+          </View>
           <View style={[styles.statusBadge, equipment.status === 'Good' 
             ? styles.statusGood 
             : equipment.status === 'Fair' 
@@ -64,10 +57,8 @@ export function EquipmentCard({ equipment, onPress }: EquipmentCardProps) {
             <Text style={styles.statusText}>{equipment.status}</Text>
           </View>
         </View>
-        
-        <Text style={styles.subtitle} numberOfLines={1}>{equipment.type} • {equipment.year}</Text>
-        
-        <View style={styles.infoRow}>
+
+        <View style={styles.footer}>
           <View style={styles.infoItem}>
             <CalendarClock size={14} color="#64748B" />
             <Text style={styles.infoText}>
@@ -85,62 +76,65 @@ export function EquipmentCard({ equipment, onPress }: EquipmentCardProps) {
 }
 
 const styles = StyleSheet.create({
-  card: {
-    width: '46%',
-    marginHorizontal: '2%',
-    marginBottom: 16,
+  container: {
+    flexDirection: 'row',
     backgroundColor: '#FFFFFF',
     borderRadius: 12,
+    marginBottom: 12,
+    padding: 12,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 1 },
     shadowOpacity: 0.1,
     shadowRadius: 4,
     elevation: 2,
+  },
+  imageContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 8,
     overflow: 'hidden',
+    backgroundColor: '#F1F5F9',
   },
   image: {
     width: '100%',
-    height: 120,
-  },
-  imageContainer: {
-    width: '100%',
-    height: 120,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderTopLeftRadius: 12,
-    borderTopRightRadius: 12,
-    overflow: 'hidden',
+    height: '100%',
   },
   iconContainer: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: '#FFFFFF',
+    width: '100%',
+    height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
+    backgroundColor: '#F1F5F9',
   },
   content: {
-    padding: 12,
+    flex: 1,
+    marginLeft: 12,
+    justifyContent: 'space-between',
   },
-  topRow: {
+  header: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 4,
+    alignItems: 'flex-start',
+  },
+  titleSection: {
+    flex: 1,
+    marginRight: 8,
   },
   title: {
-    flex: 1,
     fontSize: 16,
     fontFamily: 'Inter-Bold',
     color: '#334155',
-    marginRight: 4,
+    marginBottom: 2,
+  },
+  subtitle: {
+    fontSize: 14,
+    fontFamily: 'Inter-Regular',
+    color: '#64748B',
   },
   statusBadge: {
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    alignItems: 'center',
-    justifyContent: 'center',
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 6,
   },
   statusGood: {
     backgroundColor: '#DCFCE7',
@@ -152,23 +146,18 @@ const styles = StyleSheet.create({
     backgroundColor: '#FEE2E2',
   },
   statusText: {
-    fontSize: 10,
+    fontSize: 12,
     fontFamily: 'Inter-Medium',
     color: '#334155',
   },
-  subtitle: {
-    fontSize: 14,
-    fontFamily: 'Inter-Regular',
-    color: '#64748B',
-    marginBottom: 8,
-  },
-  infoRow: {
-    marginTop: 4,
+  footer: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    marginTop: 8,
   },
   infoItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 4,
   },
   infoText: {
     fontSize: 12,

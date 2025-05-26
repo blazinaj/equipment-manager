@@ -1,40 +1,41 @@
 import { View, Text, StyleSheet, ScrollView, TouchableOpacity, TextInput, Platform, Image } from 'react-native';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { ArrowLeft, DollarSign, Truck, FileText, Camera } from 'lucide-react-native';
+import { ArrowLeft, Calendar, DollarSign, Camera, FileText, PenTool as Tool } from 'lucide-react-native';
 import { useState } from 'react';
-import { useEquipment } from '@/hooks/useEquipment';
+import { useUpgrades } from '@/hooks/useUpgrades';
 import { DatePicker } from '@/components/DatePicker';
-import { YearPicker } from '@/components/YearPicker';
 
-const EQUIPMENT_TYPES = [
-  'Vehicle',
-  'Motorcycle',
-  'Lawn & Garden',
-  'Construction',
-  'Watercraft',
-  'Recreational',
+const CATEGORIES = [
+  'Performance',
+  'Appearance',
+  'Utility',
+  'Safety',
   'Other'
-];
+] as const;
 
-export default function AddEquipmentScreen() {
+const STATUSES = [
+  'Installed',
+  'Planned',
+  'Removed'
+] as const;
+
+export default function AddUpgradeScreen() {
+  const { id } = useLocalSearchParams();
   const router = useRouter();
-  const { addEquipment, defaultImages } = useEquipment();
+  const { addUpgrade } = useUpgrades();
   
   const [name, setName] = useState('');
-  const [type, setType] = useState<keyof typeof defaultImages>('Vehicle');
-  const [year, setYear] = useState('');
-  const [make, setMake] = useState('');
-  const [model, setModel] = useState('');
-  const [modelNumber, setModelNumber] = useState('');
-  const [status, setStatus] = useState<'Good' | 'Fair' | 'Poor'>('Good');
-  const [purchaseDate, setPurchaseDate] = useState('');
-  const [purchasePrice, setPurchasePrice] = useState('');
-  const [vinNumber, setVinNumber] = useState('');
-  const [licensePlate, setLicensePlate] = useState('');
-  const [notes, setNotes] = useState('');
+  const [manufacturer, setManufacturer] = useState('');
+  const [description, setDescription] = useState('');
+  const [category, setCategory] = useState<typeof CATEGORIES[number]>('Performance');
+  const [status, setStatus] = useState<typeof STATUSES[number]>('Planned');
+  const [installDate, setInstallDate] = useState('');
+  const [cost, setCost] = useState('');
+  const [valueIncrease, setValueIncrease] = useState('');
   const [imageFile, setImageFile] = useState<File | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [notes, setNotes] = useState('');
+  const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const handleImageSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -50,54 +51,70 @@ export default function AddEquipmentScreen() {
       return;
     }
 
-    if (!type.trim()) {
-      setError('Type is required');
+    if (!manufacturer.trim()) {
+      setError('Manufacturer is required');
       return;
     }
 
-    // Year validation - optional but must be valid if provided
-    if (year && (isNaN(Number(year)) || Number(year) < 1900 || Number(year) > new Date().getFullYear())) {
-      setError('Please enter a valid year between 1900 and ' + new Date().getFullYear());
+    if (!cost.trim() || isNaN(Number(cost)) || Number(cost) < 0) {
+      setError('Valid cost is required');
       return;
     }
 
-    // Purchase price validation - optional but must be valid if provided
-    if (purchasePrice && (isNaN(Number(purchasePrice)) || Number(purchasePrice) < 0)) {
-      setError('Please enter a valid purchase price');
-      return;
-    }
-
-    // Purchase date validation - optional but must be valid if provided
-    if (purchaseDate && isNaN(Date.parse(purchaseDate))) {
-      setError('Please enter a valid purchase date');
+    if (valueIncrease && (isNaN(Number(valueIncrease)) || Number(valueIncrease) < 0)) {
+      setError('Value increase must be a positive number');
       return;
     }
 
     try {
-      setLoading(true);
+      setSaving(true);
       setError(null);
 
-      await addEquipment({
+      await addUpgrade({
+        equipment_id: id as string,
         name,
-        type,
-        make: make || null,
-        model: model || null,
-        model_number: modelNumber || null,
-        year: year ? parseInt(year) : null,
+        manufacturer,
+        description: description || null,
+        category,
         status,
-        purchase_date: purchaseDate || null,
-        purchase_price: purchasePrice ? parseFloat(purchasePrice) : null,
-        vin_number: vinNumber || null,
-        license_plate: licensePlate || null,
+        install_date: installDate || null,
+        cost: Number(cost),
+        value_increase: valueIncrease ? Number(valueIncrease) : 0,
         notes: notes || null,
-        imageFile: imageFile || undefined,
+        imageFile,
       });
 
       router.back();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to add equipment');
+      setError(err instanceof Error ? err.message : 'Failed to add upgrade');
     } finally {
-      setLoading(false);
+      setSaving(false);
+    }
+  };
+
+  const getCategoryColor = (cat: typeof CATEGORIES[number]) => {
+    switch (cat) {
+      case 'Performance':
+        return '#6366F1';
+      case 'Appearance':
+        return '#EC4899';
+      case 'Utility':
+        return '#0D9488';
+      case 'Safety':
+        return '#F59E0B';
+      default:
+        return '#64748B';
+    }
+  };
+
+  const getStatusColor = (stat: typeof STATUSES[number]) => {
+    switch (stat) {
+      case 'Installed':
+        return '#DCFCE7';
+      case 'Planned':
+        return '#FEF9C3';
+      case 'Removed':
+        return '#FEE2E2';
     }
   };
 
@@ -112,7 +129,7 @@ export default function AddEquipmentScreen() {
         >
           <ArrowLeft size={24} color="#334155" />
         </TouchableOpacity>
-        <Text style={styles.headerTitle}>Add Equipment</Text>
+        <Text style={styles.headerTitle}>Add Upgrade</Text>
       </View>
 
       <ScrollView style={styles.content}>
@@ -123,18 +140,25 @@ export default function AddEquipmentScreen() {
         )}
 
         <View style={styles.imageSection}>
-          <Image
-            source={{ uri: imageFile ? URL.createObjectURL(imageFile) : defaultImages[type] }}
-            style={styles.previewImage}
-            resizeMode="cover"
-          />
+          {imageFile ? (
+            <Image
+              source={{ uri: URL.createObjectURL(imageFile) }}
+              style={styles.previewImage}
+              resizeMode="cover"
+            />
+          ) : (
+            <View style={styles.imagePlaceholder}>
+              <Camera size={32} color="#94A3B8" />
+              <Text style={styles.imagePlaceholderText}>Add Photo</Text>
+            </View>
+          )}
           <TouchableOpacity 
             style={styles.uploadButton}
             onPress={() => document.getElementById('image-input')?.click()}
           >
             <Camera size={20} color="#334155" />
             <Text style={styles.uploadButtonText}>
-              {imageFile ? 'Change Image' : 'Upload Image'}
+              {imageFile ? 'Change Photo' : 'Upload Photo'}
             </Text>
           </TouchableOpacity>
           <input
@@ -149,70 +173,62 @@ export default function AddEquipmentScreen() {
         <View style={styles.form}>
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Name</Text>
+            <TextInput
+              style={styles.input}
+              value={name}
+              onChangeText={setName}
+              placeholder="Enter upgrade name"
+            />
+          </View>
+
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Manufacturer</Text>
             <View style={styles.inputWithIcon}>
-              <Truck size={20} color="#64748B" />
+              <Tool size={20} color="#64748B" />
               <TextInput
                 style={styles.iconInput}
-                value={name}
-                onChangeText={setName}
-                placeholder="Enter equipment name"
+                value={manufacturer}
+                onChangeText={setManufacturer}
+                placeholder="Enter manufacturer name"
               />
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Make</Text>
+            <Text style={styles.label}>Description</Text>
             <TextInput
-              style={styles.input}
-              value={make}
-              onChangeText={setMake}
-              placeholder="Enter make (e.g., Ford, John Deere)"
+              style={[styles.input, styles.textArea]}
+              value={description}
+              onChangeText={setDescription}
+              placeholder="Enter upgrade description"
+              multiline
+              numberOfLines={4}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Model</Text>
-            <TextInput
-              style={styles.input}
-              value={model}
-              onChangeText={setModel}
-              placeholder="Enter model (e.g., F-150, X350)"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Model Number</Text>
-            <TextInput
-              style={styles.input}
-              value={modelNumber}
-              onChangeText={setModelNumber}
-              placeholder="Enter model number or serial number"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Type</Text>
+            <Text style={styles.label}>Category</Text>
             <ScrollView 
               horizontal 
               showsHorizontalScrollIndicator={false}
-              contentContainerStyle={styles.typeList}
+              contentContainerStyle={styles.categoryList}
             >
-              {EQUIPMENT_TYPES.map((equipmentType) => (
+              {CATEGORIES.map((cat) => (
                 <TouchableOpacity
-                  key={equipmentType}
+                  key={cat}
                   style={[
-                    styles.typeButton,
-                    type === equipmentType && styles.typeButtonSelected
+                    styles.categoryButton,
+                    category === cat && { backgroundColor: getCategoryColor(cat) }
                   ]}
-                  onPress={() => setType(equipmentType as keyof typeof defaultImages)}
+                  onPress={() => setCategory(cat)}
                 >
                   <Text 
                     style={[
-                      styles.typeButtonText,
-                      type === equipmentType && styles.typeButtonTextSelected
+                      styles.categoryButtonText,
+                      category === cat && styles.categoryButtonTextSelected
                     ]}
                   >
-                    {equipmentType}
+                    {cat}
                   </Text>
                 </TouchableOpacity>
               ))}
@@ -220,76 +236,45 @@ export default function AddEquipmentScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Year</Text>
-            <YearPicker
-              value={year}
-              onChange={setYear}
-              minYear={1900}
-              maxYear={new Date().getFullYear()}
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
             <Text style={styles.label}>Status</Text>
             <View style={styles.statusButtons}>
-              <TouchableOpacity 
-                style={[
-                  styles.statusButton,
-                  status === 'Good' && styles.statusButtonActive,
-                  { backgroundColor: status === 'Good' ? '#DCFCE7' : '#F1F5F9' }
-                ]}
-                onPress={() => setStatus('Good')}
-              >
-                <Text style={[
-                  styles.statusButtonText,
-                  status === 'Good' && styles.statusButtonTextActive
-                ]}>Good</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[
-                  styles.statusButton,
-                  status === 'Fair' && styles.statusButtonActive,
-                  { backgroundColor: status === 'Fair' ? '#FEF9C3' : '#F1F5F9' }
-                ]}
-                onPress={() => setStatus('Fair')}
-              >
-                <Text style={[
-                  styles.statusButtonText,
-                  status === 'Fair' && styles.statusButtonTextActive
-                ]}>Fair</Text>
-              </TouchableOpacity>
-              <TouchableOpacity 
-                style={[
-                  styles.statusButton,
-                  status === 'Poor' && styles.statusButtonActive,
-                  { backgroundColor: status === 'Poor' ? '#FEE2E2' : '#F1F5F9' }
-                ]}
-                onPress={() => setStatus('Poor')}
-              >
-                <Text style={[
-                  styles.statusButtonText,
-                  status === 'Poor' && styles.statusButtonTextActive
-                ]}>Poor</Text>
-              </TouchableOpacity>
+              {STATUSES.map((stat) => (
+                <TouchableOpacity
+                  key={stat}
+                  style={[
+                    styles.statusButton,
+                    status === stat && styles.statusButtonActive,
+                    { backgroundColor: status === stat ? getStatusColor(stat) : '#F1F5F9' }
+                  ]}
+                  onPress={() => setStatus(stat)}
+                >
+                  <Text style={[
+                    styles.statusButtonText,
+                    status === stat && styles.statusButtonTextActive
+                  ]}>
+                    {stat}
+                  </Text>
+                </TouchableOpacity>
+              ))}
             </View>
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Purchase Date</Text>
+            <Text style={styles.label}>Install Date</Text>
             <DatePicker
-              value={purchaseDate}
-              onChange={setPurchaseDate}
+              value={installDate}
+              onChange={setInstallDate}
             />
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Purchase Price</Text>
+            <Text style={styles.label}>Cost</Text>
             <View style={styles.inputWithIcon}>
               <DollarSign size={20} color="#64748B" />
               <TextInput
                 style={styles.iconInput}
-                value={purchasePrice}
-                onChangeText={setPurchasePrice}
+                value={cost}
+                onChangeText={setCost}
                 placeholder="0.00"
                 keyboardType="decimal-pad"
               />
@@ -297,23 +282,17 @@ export default function AddEquipmentScreen() {
           </View>
 
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>VIN Number</Text>
-            <TextInput
-              style={styles.input}
-              value={vinNumber}
-              onChangeText={setVinNumber}
-              placeholder="Enter VIN number (optional)"
-            />
-          </View>
-
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>License Plate</Text>
-            <TextInput
-              style={styles.input}
-              value={licensePlate}
-              onChangeText={setLicensePlate}
-              placeholder="Enter license plate (optional)"
-            />
+            <Text style={styles.label}>Value Increase</Text>
+            <View style={styles.inputWithIcon}>
+              <DollarSign size={20} color="#64748B" />
+              <TextInput
+                style={styles.iconInput}
+                value={valueIncrease}
+                onChangeText={setValueIncrease}
+                placeholder="0.00"
+                keyboardType="decimal-pad"
+              />
+            </View>
           </View>
 
           <View style={styles.inputGroup}>
@@ -336,18 +315,18 @@ export default function AddEquipmentScreen() {
           <TouchableOpacity 
             style={styles.cancelButton}
             onPress={() => router.back()}
-            disabled={loading}
+            disabled={saving}
           >
             <Text style={styles.cancelButtonText}>Cancel</Text>
           </TouchableOpacity>
 
           <TouchableOpacity 
-            style={[styles.saveButton, loading && styles.saveButtonDisabled]}
+            style={[styles.saveButton, saving && styles.saveButtonDisabled]}
             onPress={handleSave}
-            disabled={loading}
+            disabled={saving}
           >
             <Text style={styles.saveButtonText}>
-              {loading ? 'Adding...' : 'Add Equipment'}
+              {saving ? 'Adding...' : 'Add Upgrade'}
             </Text>
           </TouchableOpacity>
         </View>
@@ -408,8 +387,20 @@ const styles = StyleSheet.create({
     width: '100%',
     height: 200,
     backgroundColor: '#F1F5F9',
+  },
+  imagePlaceholder: {
+    width: '100%',
+    height: 200,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
     borderRadius: 12,
-    marginBottom: 12,
+  },
+  imagePlaceholderText: {
+    marginTop: 12,
+    fontSize: 14,
+    fontFamily: 'Inter-Medium',
+    color: '#94A3B8',
   },
   uploadButton: {
     flexDirection: 'row',
@@ -418,6 +409,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 8,
     borderRadius: 8,
+    marginTop: 12,
   },
   uploadButtonText: {
     marginLeft: 8,
@@ -467,26 +459,23 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#334155',
   },
-  typeList: {
+  categoryList: {
     paddingVertical: 4,
     gap: 8,
   },
-  typeButton: {
+  categoryButton: {
     paddingHorizontal: 16,
     paddingVertical: 8,
     backgroundColor: '#F1F5F9',
     borderRadius: 20,
     marginRight: 8,
   },
-  typeButtonSelected: {
-    backgroundColor: '#334155',
-  },
-  typeButtonText: {
+  categoryButtonText: {
     fontSize: 14,
     fontFamily: 'Inter-Medium',
     color: '#64748B',
   },
-  typeButtonTextSelected: {
+  categoryButtonTextSelected: {
     color: '#FFFFFF',
   },
   statusButtons: {

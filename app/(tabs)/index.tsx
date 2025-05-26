@@ -1,9 +1,10 @@
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, SafeAreaView, Platform, Image, RefreshControl } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Plus, Filter, Search, ChevronRight } from 'lucide-react-native';
+import { Plus, Filter, Search, LayoutGrid, List } from 'lucide-react-native';
 import { useState, useCallback } from 'react';
 import { StatusBar } from 'expo-status-bar';
 import { useEquipment } from '@/hooks/useEquipment';
+import { EquipmentListItem } from '@/components/EquipmentListItem';
 
 const EQUIPMENT_TYPES = [
   'All',
@@ -19,6 +20,7 @@ const EQUIPMENT_TYPES = [
 export default function EquipmentScreen() {
   const router = useRouter();
   const { equipment, loading, error, refresh } = useEquipment();
+  const [viewMode, setViewMode] = useState<'grid' | 'list'>('grid');
   const [selectedType, setSelectedType] = useState('All');
   const [refreshing, setRefreshing] = useState(false);
   
@@ -73,6 +75,16 @@ export default function EquipmentScreen() {
           <TouchableOpacity style={styles.filterButton}>
             <Filter size={20} color="#334155" />
           </TouchableOpacity>
+          <TouchableOpacity 
+            style={styles.viewModeButton}
+            onPress={() => setViewMode(viewMode === 'grid' ? 'list' : 'grid')}
+          >
+            {viewMode === 'grid' ? (
+              <List size={20} color="#334155" />
+            ) : (
+              <LayoutGrid size={20} color="#334155" />
+            )}
+          </TouchableOpacity>
         </View>
         
         <View style={styles.categoriesContainer}>
@@ -126,34 +138,44 @@ export default function EquipmentScreen() {
               <Text style={styles.loadingText}>Loading equipment...</Text>
             </View>
           ) : filteredEquipment.length > 0 ? (
-            <View style={styles.equipmentList}>
-              {filteredEquipment.map((item) => (
-                <TouchableOpacity
-                  key={item.id}
-                  style={styles.equipmentCard}
-                  onPress={() => router.push(`/equipment/${item.id}`)}
-                >
-                  <Image
-                    source={{ uri: item.image_url }}
-                    style={styles.equipmentImage}
-                    resizeMode="cover"
-                  />
-                  <View style={styles.equipmentContent}>
-                    <View style={styles.equipmentHeader}>
-                      <Text style={styles.equipmentName}>{item.name}</Text>
-                      <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
-                        <Text style={styles.statusText}>{item.status}</Text>
+            viewMode === 'grid' ? (
+              <View style={styles.equipmentGrid}>
+                {filteredEquipment.map((item) => (
+                  <TouchableOpacity
+                    key={item.id}
+                    style={styles.equipmentCard}
+                    onPress={() => router.push(`/equipment/${item.id}`)}
+                  >
+                    <Image
+                      source={{ uri: item.image_url }}
+                      style={styles.equipmentImage}
+                      resizeMode="cover"
+                    />
+                    <View style={styles.equipmentContent}>
+                      <View style={styles.equipmentHeader}>
+                        <Text style={styles.equipmentName}>{item.name}</Text>
+                        <View style={[styles.statusBadge, { backgroundColor: getStatusColor(item.status) }]}>
+                          <Text style={styles.statusText}>{item.status}</Text>
+                        </View>
+                      </View>
+                      <Text style={styles.equipmentType}>{item.type} • {item.year}</Text>
+                      <View style={styles.equipmentFooter}>
                       </View>
                     </View>
-                    <Text style={styles.equipmentType}>{item.type} • {item.year}</Text>
-                    <View style={styles.equipmentFooter}>
-                      <Text style={styles.equipmentPrice}>${item.purchase_price.toLocaleString()}</Text>
-                      <ChevronRight size={20} color="#94A3B8" />
-                    </View>
-                  </View>
-                </TouchableOpacity>
-              ))}
-            </View>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            ) : (
+              <View style={styles.equipmentList}>
+                {filteredEquipment.map((item) => (
+                  <EquipmentListItem
+                    key={item.id}
+                    equipment={item}
+                    onPress={() => router.push(`/equipment/${item.id}`)}
+                  />
+                ))}
+              </View>
+            )
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyStateTitle}>No Equipment Found</Text>
@@ -244,7 +266,7 @@ const styles = StyleSheet.create({
   searchPlaceholder: {
     marginLeft: 8,
     color: '#94A3B8',
-    fontSize: 16,
+    fontSize: 14,
     fontFamily: 'Inter-Regular',
   },
   filterButton: {
@@ -287,7 +309,18 @@ const styles = StyleSheet.create({
   content: {
     flex: 1,
   },
-  equipmentList: {
+  viewModeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 8,
+    backgroundColor: '#FFFFFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginLeft: 8,
+  },
+  equipmentGrid: {
     paddingHorizontal: 16,
   },
   equipmentCard: {
@@ -369,6 +402,9 @@ const styles = StyleSheet.create({
     fontFamily: 'Inter-Regular',
     color: '#64748B',
     textAlign: 'center',
+  },
+  equipmentList: {
+    paddingHorizontal: 16,
   },
   emptyState: {
     padding: 24,
