@@ -13,13 +13,17 @@
     },
     "android": {
       "package": "com.cloudify.equipmentmanager",
+      "compileSdkVersion": 33,
+      "targetSdkVersion": 33,
       "adaptiveIcon": {
         "foregroundImage": "./assets/images/icon.png",
         "backgroundColor": "#ffffff"
       },
       "permissions": [
         "WRITE_EXTERNAL_STORAGE",
-        "READ_EXTERNAL_STORAGE"
+        "READ_EXTERNAL_STORAGE",
+        "USE_BIOMETRIC",
+        "USE_FINGERPRINT"
       ]
     },
     "web": {
@@ -30,13 +34,7 @@
     "plugins": [
       "expo-router",
       "expo-font",
-      "expo-web-browser",
-      [
-        "expo-secure-store",
-        {
-          "faceIDPermission": "Allow Equipment Manager to access your Face ID."
-        }
-      ]
+      "expo-web-browser"
     ],
     "experiments": {
       "typedRoutes": true
