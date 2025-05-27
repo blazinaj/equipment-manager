@@ -6,7 +6,7 @@ import { ThemeContext, useThemeProvider } from '@/hooks/useTheme';
 import { useFrameworkReady } from '@/hooks/useFrameworkReady';
 import { SplashScreen } from 'expo-router';
 import { useAuth } from '@/hooks/useAuth';
-import { supabase } from '@/lib/supabase';
+import { Platform } from 'react-native';
 
 // Prevent splash screen from auto-hiding
 SplashScreen.preventAutoHideAsync();
@@ -24,9 +24,17 @@ export default function RootLayout() {
 
   // Listen for auth state changes
   useEffect(() => {
-    supabase.auth.onAuthStateChange((event, session) => {
-      setSession(session);
-    });
+    if (Platform.OS === 'web') {
+      // Only import supabase client on web platform
+      const { supabase } = require('@/lib/supabase');
+      const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+        setSession(session);
+      });
+
+      return () => {
+        subscription.unsubscribe();
+      };
+    }
   }, []);
 
   // Hide splash screen once fonts are loaded and auth is checked
@@ -46,7 +54,7 @@ export default function RootLayout() {
       <ThemeContext.Provider value={themeContext}>
         <Stack screenOptions={{ headerShown: false }}>
           {session ? (
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+            <Stack.Screen name="(tabs)\" options={{ headerShown: false }} />
           ) : (
             <Stack.Screen name="auth" options={{ headerShown: false }} />
           )}

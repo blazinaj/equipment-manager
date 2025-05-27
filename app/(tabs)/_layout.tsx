@@ -43,7 +43,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="index"
         options={{
-          title: 'My Fleet',
+          title: 'Equipment',
           tabBarIcon: ({ color, size }) => (
             <Grid size={ICON_SIZE} color={color} strokeWidth={1.5} />
           ),
@@ -63,7 +63,7 @@ export default function TabLayout() {
       <Tabs.Screen
         name="costs"
         options={{
-          title: 'Costs',
+          title: 'Expenses',
           tabBarIcon: ({ color, size }) => (
             <Receipt size={ICON_SIZE} color={color} strokeWidth={1.5} />
           ),
@@ -81,83 +81,83 @@ export default function TabLayout() {
         }}
       />
 
-      {/* Hide all detail/edit/add screens from tab bar */}
+      {/* {/* Hide all detail/edit/add screens from tab bar */}
       <Tabs.Screen
-        name="equipment/[id]"
+        name="equipment/[id]"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="equipment/add"
+        name="equipment/add"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="equipment/search"
+        name="equipment/search"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
-      />
+        />
       <Tabs.Screen
         name="equipment/edit/[id]"
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
         name="maintenance/[id]"
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="maintenance/add"
+        name="maintenance/add"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="maintenance/edit/[id]"
+        name="maintenance/edit/[id]"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="costs/[id]"
+        name="costs/[id]"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="costs/add"
+        name="costs/add"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="equipment/[id]/upgrades/[upgradeId]"
+        name="equipment/[id]/upgrades/[upgradeId]"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="equipment/[id]/upgrades/add"
+        name="equipment/[id]/upgrades/add"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="equipment/[id]/repairs/[repairId]"
+        name="equipment/[id]/repairs/[repairId]"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
       <Tabs.Screen
-        name="equipment/[id]/repairs/add"
+        name="equipment/[id]/repairs/add"        
         options={{
-          tabBarButton: () => null,
+          href: null,
         }}
       />
     </Tabs>
