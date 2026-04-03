@@ -26,14 +26,8 @@ export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey, {
     storage: getStorageAdapter(),
     persistSession: true,
     autoRefreshToken: true,
-    detectSessionInUrl: true,
+    detectSessionInUrl: Platform.OS === 'web',
     flowType: 'pkce',
     debug: __DEV__,
-    // Set cookie options for web platform
-    cookieOptions: Platform.OS === 'web' ? {
-      secure: true,
-      sameSite: 'strict',
-      httpOnly: true,
-    } : undefined,
   },
 });

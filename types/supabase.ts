@@ -173,8 +173,6 @@ export interface Database {
           updated_at?: string
         }
       }
-    }
-  }
       repairs: {
         Row: {
           id: string
@@ -299,4 +297,6 @@ export interface Database {
           updated_at?: string
         }
       }
+    }
+  }
 }
